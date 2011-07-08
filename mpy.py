@@ -166,10 +166,15 @@ class MPY_MOD():
             for i in [k % len(items) for k in range(self.sel + di, self.sel + di + di * len(items), di)]:
                 item = items[i]
 
-                if modname in ['Queue', 'Artist-Album', 'Search']:
+                if modname in ['Queue', 'Search']:
                     title = item.get('title') or os.path.basename(item['file'])
                 elif modname == 'Database':
                     title = item.values()[0]
+                elif modname == 'Artist-Album':
+                    if self._type in ['artist', 'album']:
+                        title = item
+                    elif self._type == 'song':
+                        title = item.get('title') or os.path.basename(item['file'])
 
                 if title.find(self.main.search) != -1:
                     has_match = True
@@ -1356,7 +1361,7 @@ class MPY_ARTIST_ALBUM(MPY_MOD, MPY_SCROLL):
             elif self._type == 'song':
                 self.mpc.add(item['file'])
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self._search('Artist', c)
+            self._search('Artist-Album', c)
         elif c == ord(';'):
             # tell QUEUE we want to locate a song
             if self._type == 'song':
