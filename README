@@ -1,0 +1,17 @@
+MPY - a [Python + Curses]-based MPD client.
+
+Made by Cyker Way 2011.
+
+Released under GPLv3.
+
+Features:
+
+    Playback control.
+    Playlist management.
+    Database management.
+    Song rating.
+    Auto lyrics fetching and saving.
+    Lyrics highlighting and OSD.
+    Artist-Album view.
+    Search by tags in database.
+    Vim-like keybinding with single-hand manipulation.
