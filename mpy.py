@@ -250,8 +250,8 @@ class MPY_SCROLL():
         self.sel = 0
 
     def to_end(self):
-        self.beg = self.num - 1
-        self.sel = self.num - 1
+        self.beg = max(self.num - 1, 0)
+        self.sel = max(self.num - 1, 0)
 
     def locate(self, pos):
         '''Locate sel at pos, and put in the center.'''
