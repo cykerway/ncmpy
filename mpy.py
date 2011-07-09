@@ -131,7 +131,7 @@ class MPY_MOD():
     def _format_time(self, tm):
         '''Convert time: <seconds> -> <hh:mm:ss>.'''
 
-        if tm:
+        if tm.isdigit():
             tm = int(tm)
             h, m, s = tm // 3600, (tm // 60) % 60, tm % 60
             if h > 0:
@@ -140,6 +140,15 @@ class MPY_MOD():
                 return '{:02d}:{:02d}'.format(m, s)
         else:
             return ''
+
+    def _get_title(self, item):
+        title = item.get('title')
+        if isinstance(title, str):
+            return title
+        elif isinstance(title, list):
+            return ', '.join(title)
+        else:
+            return None
 
     def _validate(self, n):
         '''Constrain value in range [0, num).'''
@@ -167,14 +176,14 @@ class MPY_MOD():
                 item = items[i]
 
                 if modname in ['Queue', 'Search']:
-                    title = item.get('title') or os.path.basename(item['file'])
+                    title = self._get_title(item) or os.path.basename(item['file'])
                 elif modname == 'Database':
                     title = item.values()[0]
                 elif modname == 'Artist-Album':
                     if self._type in ['artist', 'album']:
                         title = item
                     elif self._type == 'song':
-                        title = item.get('title') or os.path.basename(item['file'])
+                        title = self._get_title(item) or os.path.basename(item['file'])
 
                 if title.find(self.main.search) != -1:
                     has_match = True
@@ -718,7 +727,7 @@ class MPY_QUEUE(MPY_MOD, MPY_SCROLL):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self._queue[i]
-            title = item.has_key('title') and item['title'] or os.path.basename(item['file'])
+            title = self._get_title(item) or os.path.basename(item['file'])
             rating = item['rating']
             tm = self._format_time(item['time'])
 
@@ -1223,6 +1232,11 @@ class MPY_INFO(MPY_MOD, MPY_SCROLL):
         sid_list = [('item', k, self._sid.get(k.lower()) or '') for k in self._song_key_list]
         stats_list = [('item', k, self.stats.get(k.lower()) or '') for k in self._stats_key_list]
 
+        # convert list (multi-tags)  to str
+        for l in (cp_list, siq_list, sid_list):
+            for i in range(6):
+                l[i] = (l[i][0], l[i][1], isinstance(l[i][2], str) and l[i][2] or ', '.join(l[i][2]))
+
         # format time
         for l in (cp_list, siq_list, sid_list):
             l[6] = (l[6][0], l[6][1], self._format_time(l[6][2]))
@@ -1383,7 +1397,7 @@ class MPY_ARTIST_ALBUM(MPY_MOD, MPY_SCROLL):
             if self._type in ['artist', 'album']:
                 val = item
             elif self._type == 'song':
-                val = item.get('title') or os.path.basename(item.get('file'))
+                val = self._get_title(item) or os.path.basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
@@ -1479,7 +1493,7 @@ class MPY_SEARCH(MPY_MOD, MPY_SCROLL):
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self._view[i]
 
-            val = item.get('title') or os.path.basename(item.get('file'))
+            val = self._get_title(item) or os.path.basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
