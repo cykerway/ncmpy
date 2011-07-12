@@ -776,6 +776,14 @@ class MPY_DATABASE(MPY_MOD, MPY_SCROLL):
             self.sel = 0
         return view
 
+    def udata(self):
+        MPY_MOD.udata(self)
+        
+        if self.board.get('main-database') == 'updated':
+            self._dir = ''
+            self._view = self._build_view()
+            self.board['msg'] = 'Database updated'
+
     def round_one(self, c):
         if c == ord('j'):
             self.one_line_down()
@@ -862,9 +870,6 @@ class MPY_DATABASE(MPY_MOD, MPY_SCROLL):
                     self._view = self._build_view(keeppos=True)
         elif c == ord('U'):
             self.mpc.update()
-            self._dir = ''
-            self._view = self._build_view()
-            self.board['msg'] = 'Database updated'
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
             self._search('Database', c)
         elif c == ord(';'):
@@ -1850,7 +1855,10 @@ class MPY():
         self.board.clear()
 
         if self.sync:
-            self.try_leave_idle()
+            events = self.try_leave_idle()
+
+            if events and 'database' in events:
+                self.board['main-database'] = 'updated'
 
             if c not in self.allpsks and self.pending:
                 self.mpc.command_list_ok_begin()

@@ -15,3 +15,7 @@ Features:
     Artist-Album view.
     Search by tags in database.
     Vim-like keybinding with single-hand manipulation.
+
+Acknowledgements:
+
+    Lyrics plugin is adapted from ttplyrics: http://code.google.com/p/ttplyrics/
