@@ -134,19 +134,16 @@ class MPY_MOD():
         if tm.isdigit():
             tm = int(tm)
             h, m, s = tm // 3600, (tm // 60) % 60, tm % 60
-            if h > 0:
-                return '{}:{:02d}:{:02d}'.format(h, m, s)
-            else:
-                return '{:02d}:{:02d}'.format(m, s)
+            return '{}:'.format(h) * bool(h > 0) + '{:02d}:{:02d}'.format(m, s)
         else:
             return ''
 
-    def _get_title(self, item):
-        title = item.get('title')
-        if isinstance(title, str):
-            return title
-        elif isinstance(title, list):
-            return ', '.join(title)
+    def _get_tag(self, tagname, item):
+        tag = item.get(tagname)
+        if isinstance(tag, str):
+            return tag
+        elif isinstance(tag, list):
+            return ', '.join(tag)
         else:
             return None
 
@@ -176,14 +173,14 @@ class MPY_MOD():
                 item = items[i]
 
                 if modname in ['Queue', 'Search']:
-                    title = self._get_title(item) or os.path.basename(item['file'])
+                    title = self._get_tag('title', item) or os.path.basename(item['file'])
                 elif modname == 'Database':
                     title = item.values()[0]
                 elif modname == 'Artist-Album':
                     if self._type in ['artist', 'album']:
                         title = item
                     elif self._type == 'song':
-                        title = self._get_title(item) or os.path.basename(item['file'])
+                        title = self._get_tag('title', item) or os.path.basename(item['file'])
 
                 if title.find(self.main.search) != -1:
                     has_match = True
@@ -727,7 +724,7 @@ class MPY_QUEUE(MPY_MOD, MPY_SCROLL):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self._queue[i]
-            title = self._get_title(item) or os.path.basename(item['file'])
+            title = self._get_tag('title', item) or os.path.basename(item['file'])
             rating = item['rating']
             tm = self._format_time(item['time'])
 
@@ -775,6 +772,14 @@ class MPY_DATABASE(MPY_MOD, MPY_SCROLL):
             self.beg = 0
             self.sel = 0
         return view
+
+    def udata(self):
+        MPY_MOD.udata(self)
+        
+        if self.board.get('main-database') == 'updated':
+            self._dir = ''
+            self._view = self._build_view()
+            self.board['msg'] = 'Database updated'
 
     def round_one(self, c):
         if c == ord('j'):
@@ -862,9 +867,6 @@ class MPY_DATABASE(MPY_MOD, MPY_SCROLL):
                     self._view = self._build_view(keeppos=True)
         elif c == ord('U'):
             self.mpc.update()
-            self._dir = ''
-            self._view = self._build_view()
-            self.board['msg'] = 'Database updated'
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
             self._search('Database', c)
         elif c == ord(';'):
@@ -1397,7 +1399,7 @@ class MPY_ARTIST_ALBUM(MPY_MOD, MPY_SCROLL):
             if self._type in ['artist', 'album']:
                 val = item
             elif self._type == 'song':
-                val = self._get_title(item) or os.path.basename(item.get('file'))
+                val = self._get_tag('title', item) or os.path.basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
@@ -1493,7 +1495,7 @@ class MPY_SEARCH(MPY_MOD, MPY_SCROLL):
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self._view[i]
 
-            val = self._get_title(item) or os.path.basename(item.get('file'))
+            val = self._get_tag('title', item) or os.path.basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
@@ -1850,7 +1852,10 @@ class MPY():
         self.board.clear()
 
         if self.sync:
-            self.try_leave_idle()
+            events = self.try_leave_idle()
+
+            if events and 'database' in events:
+                self.board['main-database'] = 'updated'
 
             if c not in self.allpsks and self.pending:
                 self.mpc.command_list_ok_begin()

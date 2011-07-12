@@ -1,5 +1,5 @@
 log
 .cache
-.ncmpcy.swp
-*.lrc
-*.pyc
+.swp
+.lrc
+.pyc
