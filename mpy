@@ -41,14 +41,16 @@ uwin        *   ->  *   ->  *   ->  ->  *
 
 import copy, curses
 import httplib2
-import locale, lrc
+import locale
 import mpd
 import os
 import pyosd
 import re
 import select, sys
-import time, threading, ttplyrics
+import time, threading
 import urllib
+
+from mpy import lrc, ttplyrics
 
 # ------------------------------
 # global configuration

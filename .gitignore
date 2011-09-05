@@ -1,5 +1,6 @@
-log
-.cache
 .swp
 .lrc
 .pyc
+MANIFEST
+build/
+dist/

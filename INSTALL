@@ -1,1 +1,9 @@
-Get Python! Set configuration in mpy.py! And run it!
+First run:
+
+    python2 setup.py install --prefix=/usr/local
+
+Then:
+
+    mpy
+
+Enjoy!
