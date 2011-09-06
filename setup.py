@@ -10,7 +10,7 @@ setup(
         author_email = 'cykerway@gmail.com', 
         url = 'http://mpy.cykerway.com/', 
         description = 'A [Python + Curses]-based MPD client', 
-        license = 'GPLv3', 
+        license = 'GPL3', 
         requires = ['curses', 'httplib2', 'lxml', 'pyosd'], 
         packages = ['mpy'], 
         package_dir = {'mpy':'src'}, 
