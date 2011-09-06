@@ -11,7 +11,7 @@ setup(
         url = 'http://mpy.cykerway.com/', 
         description = 'A [Python + Curses]-based MPD client', 
         license = 'GPL3', 
-        requires = ['curses', 'httplib2', 'lxml', 'pyosd'], 
+        requires = ['curses', 'httplib2', 'lxml', 'mpd', 'pyosd'], 
         packages = ['mpy'], 
         package_dir = {'mpy':'src'}, 
         scripts = ['mpy'], 
