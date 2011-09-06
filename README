@@ -16,6 +16,10 @@ Features:
     Search by tags in database.
     Vim-like keybinding with single-hand manipulation.
 
+Install:
+    
+    See INSTALL.
+
 Acknowledgements:
 
     Lyrics plugin is adapted from ttplyrics: http://code.google.com/p/ttplyrics/

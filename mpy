@@ -18,26 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-'''MPY is a MPD client written in Python using Curses.
-
-    udata -> round_one -> round_two -> uwin
-
-            main    mod_1   mod_2 ... mod_n
-
-udata       *   ->  *   ->  *   ->  ->  *
-                                        |
-            <-  <-  <-  <-  <-  <-  <-   
-            |
-round_one   *   ->  *   ->  *   ->  ->  *
-                                        |
-            <-  <-  <-  <-  <-  <-  <-   
-            |
-round_two   *   ->  *   ->  *   ->  ->  *
-                                        |
-            <-  <-  <-  <-  <-  <-  <-   
-            |
-uwin        *   ->  *   ->  *   ->  ->  *
-'''
+'''MPY - a [Python + Curses]-based MPD client.'''
 
 import copy, curses
 import httplib2
@@ -54,14 +35,47 @@ from mpy import lrc, ttplyrics
 
 # ------------------------------
 # global configuration
-# modify as needed before startup
 # ------------------------------
 
-MPD_HOST = 'localhost'
-MPD_PORT = 6600
-ENABLE_OSD = False
-ENABLE_RATING = True
-LYRICS_DIR = os.path.join(os.path.expanduser('~'), '.mpy/lyrics')
+# Where conf files lie. Order IS important.
+conf_files = [os.path.expanduser('~/.mpy/mpy.conf'), '/etc/mpy.conf']
+
+# global conf
+conf = {}
+
+def read_conf():
+    '''Read global configurations from file.'''
+
+    conf['MPD_HOST'] = 'localhost'
+    conf['MPD_PORT'] = 6600
+    conf['ENABLE_OSD'] = False
+    conf['ENABLE_RATING'] = True
+    conf['LYRICS_DIR'] = os.path.expanduser('~/.mpy/lyrics')
+
+    for cf in conf_files:
+        if not os.path.isfile(cf):
+            continue
+        with open(cf, 'rt') as f:
+            l_cnt = 0
+            for l in f:
+                l_cnt += 1
+                if l.startswith('#'):
+                    continue
+                m = re.match(r'(\S+)\s+(\S+)', l)
+                if not m:
+                    continue
+                g = m.groups()
+                if g[0] == 'MPD_HOST':
+                    conf[g[0]] = g[1]
+                elif g[0] == 'MPD_PORT':
+                    conf[g[0]] = int(g[1])
+                elif g[0] in ['ENABLE_OSD', 'ENABLE_RATING']:
+                    conf[g[0]] = g[1].lower() in ['yes', '1']
+                elif g[0] == 'LYRICS_DIR':
+                    conf[g[0]] = os.path.expanduser(g[1])
+                else:
+                    raise Exception('Unknows option {} in conf file {}, line {}'.format(g[0], cf, l_cnt))
+        break
 
 # ------------------------------
 # DON'T modify code below
@@ -618,7 +632,7 @@ class MPY_QUEUE(MPY_MOD, MPY_SCROLL):
             # self.cur is set later, so not validated here
 
             for song in self._queue:
-                if ENABLE_RATING:
+                if conf['ENABLE_RATING']:
                     try:
                         rating = int(self.mpc.sticker_get('song', song['file'], 'rating').split('=',1)[1])
                     except mpd.CommandError:
@@ -691,7 +705,7 @@ class MPY_QUEUE(MPY_MOD, MPY_SCROLL):
         elif c == ord('\n'):
             self.mpc.playid(self._queue[self.sel]['id'])
         elif c in range(ord('1'), ord('5') + 1):
-            if ENABLE_RATING:
+            if conf['ENABLE_RATING']:
                 rating = c - ord('0')
                 song = self._queue[self.cur]
                 self.mpc.sticker_set('song', song['file'], 'rating', rating)
@@ -941,7 +955,7 @@ class MPY_LYRICS(MPY_MOD, MPY_SCROLL, threading.Thread):
 
         # directory to save lyrics. 
         # Make sure have write permission.
-        self._lyrics_dir = LYRICS_DIR
+        self._lyrics_dir = conf['LYRICS_DIR']
 
         # new song, maintained by module
         self._nsong = None
@@ -966,7 +980,7 @@ class MPY_LYRICS(MPY_MOD, MPY_SCROLL, threading.Thread):
         self._auto_center = True
 
         # osd engine
-        if ENABLE_OSD:
+        if conf['ENABLE_OSD']:
             self._osd = pyosd.osd(font='-misc-droid sans mono-medium-r-normal--0-0-0-0-m-0-iso8859-1', 
                     colour='#FFFF00', 
                     align=pyosd.ALIGN_CENTER, 
@@ -1060,7 +1074,7 @@ class MPY_LYRICS(MPY_MOD, MPY_SCROLL, threading.Thread):
                 else:
                     self._lyrics_state = 'saved'
 
-                if ENABLE_OSD:
+                if conf['ENABLE_OSD']:
                     self._osdcur = -1
             self._cv.release()
         else:
@@ -1086,7 +1100,7 @@ class MPY_LYRICS(MPY_MOD, MPY_SCROLL, threading.Thread):
         self.win.noutrefresh()
 
         # osd lyrics if ENABLE_OSD is True
-        if ENABLE_OSD:
+        if conf['ENABLE_OSD']:
             if self.cur != self._osdcur:
                 self._osd.hide()
                 if self._ltexts:
@@ -1615,9 +1629,9 @@ class MPY():
         # bar module list
         self.bmlist = self.bmdict.values()
 
-    def __enter__(self, host=MPD_HOST, port=MPD_PORT):
+    def __enter__(self):
         self._init_curses()
-        self._init_mpd(host, port)
+        self._init_mpd(conf['MPD_HOST'], conf['MPD_PORT'])
         self._init_conf()
         self._init_data()
         self._init_board()
@@ -1774,7 +1788,7 @@ class MPY():
             mod.round_two()
 
     def uwin(self):
-        if ENABLE_OSD:
+        if conf['ENABLE_OSD']:
             self.l.uwin()
 
         self.mdict[self.tmodname].uwin()
@@ -1922,8 +1936,10 @@ if __name__ == '__main__':
     try:
         locale.setlocale(locale.LC_ALL,'')
 
-        if not os.path.isdir(LYRICS_DIR):
-            os.makedirs(LYRICS_DIR)
+        read_conf()
+
+        if not os.path.isdir(conf['LYRICS_DIR']):
+            os.makedirs(conf['LYRICS_DIR'])
 
         with MPY() as mpy:
             mpy.main_loop()

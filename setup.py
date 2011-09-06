@@ -1,6 +1,7 @@
 #!/usr/bin/python2
 
 from distutils.core import setup, Extension
+import glob
 
 setup(
         name = 'mpy', 
@@ -14,4 +15,8 @@ setup(
         packages = ['mpy'], 
         package_dir = {'mpy':'src'}, 
         scripts = ['mpy'], 
+        data_files = [
+            ('share/doc/mpy', ['INSTALL', 'README']), 
+            ('share/mpy', glob.glob('share/*')), 
+            ]
         )
