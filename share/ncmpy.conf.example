@@ -1,0 +1,15 @@
+# MPD host and port
+#MPD_HOST            localhost
+#MPD_PORT            6600
+
+# Enable OSD or not
+# Values: yes|no
+#ENABLE_OSD          no
+
+# Enable song rating or not
+# Values: yes|no
+#ENABLE_RATING       yes
+
+# Lyrics dir
+# ~ for user's home directory
+#LYRICS_DIR          ~/.ncmpy/lyrics
