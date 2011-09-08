@@ -2,15 +2,15 @@ Install (just one step):
 
     python2 setup.py install --prefix=/usr
 
-To start mpy, run:
+To start ncmpy, run:
 
-    mpy
+    ncmpy
 
-Main configuration file is /etc/mpy.conf
-Configuration sample is /usr/share/mpy/mpy.conf.example
-Edit and copy it to /etc/mpy.conf
-And you can also create a user-scope configuration file ~/.mpy/mpy.conf
+Main configuration file is /etc/ncmpy.conf
+Configuration sample is /usr/share/ncmpy/ncmpy.conf.example
+Edit and copy it to /etc/ncmpy.conf
+And you can also create a user-scope configuration file ~/.ncmpy/ncmpy.conf
 
-Default lyrics directory is ~/.mpy/lyrics
+Default lyrics directory is ~/.ncmpy/lyrics
 
 Enjoy!

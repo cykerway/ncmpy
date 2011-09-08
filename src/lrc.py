@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 #
-# LRC engine for MPY.
+# LRC engine for ncmpy.
 # 
 # Copyright (C) 2011 Cyker Way
 # 
