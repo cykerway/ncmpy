@@ -20,15 +20,19 @@
 
 '''NCMPY - a [Python + Curses]-based MPD client.'''
 
-import copy, curses
+import copy
+import curses
 import httplib2
 import locale
 import mpd
 import os
 import pyosd
 import re
-import select, sys
-import time, threading
+import select
+import signal
+import sys
+import threading
+import time
 import urllib
 
 from ncmpy.config import Config
@@ -1550,18 +1554,18 @@ class NCMPY():
     def _init_mods(self):
         '''Initialize modules (mods).'''
 
-        self.m = NCMPY_MENU(self.stdscr.subwin(1, self.width, 0, 0), self)                    # menu
-        self.t = NCMPY_TITLE(self.stdscr.subwin(1, self.width, 1, 0), self)                   # title
-        self.p = NCMPY_PROGRESS(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)  # progress
-        self.s = NCMPY_STATUS(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)    # status
-        self.e = NCMPY_MESSAGE(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)   # message
-        self.h = NCMPY_HELP(curses.newwin(self.height - 4, self.width, 2, 0), self)           # help
-        self.q = NCMPY_QUEUE(curses.newwin(self.height - 4, self.width, 2, 0), self)          # queue
-        self.d = NCMPY_DATABASE(curses.newwin(self.height - 4, self.width, 2, 0), self)       # database
-        self.l = NCMPY_LYRICS(curses.newwin(self.height - 4, self.width, 2, 0), self)         # lyrics
-        self.a = NCMPY_ARTIST_ALBUM(curses.newwin(self.height - 4, self.width, 2, 0), self)   # artist-album
-        self.r = NCMPY_SEARCH(curses.newwin(self.height - 4, self.width, 2, 0), self)         # search
-        self.i = NCMPY_INFO(curses.newwin(self.height - 4, self.width, 2, 0), self)           # info
+        self.m = NCMPY_MENU(self.stdscr.subwin(1, self.width, 0, 0), self)
+        self.t = NCMPY_TITLE(self.stdscr.subwin(1, self.width, 1, 0), self)
+        self.p = NCMPY_PROGRESS(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)
+        self.s = NCMPY_STATUS(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
+        self.e = NCMPY_MESSAGE(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
+        self.h = NCMPY_HELP(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.q = NCMPY_QUEUE(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.d = NCMPY_DATABASE(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.l = NCMPY_LYRICS(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.a = NCMPY_ARTIST_ALBUM(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.r = NCMPY_SEARCH(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.i = NCMPY_INFO(curses.newwin(self.height - 4, self.width, 2, 0), self)
 
         # module dict
         self.mdict = {
@@ -1873,6 +1877,8 @@ class NCMPY():
         poll.register(0, select.POLLIN)
 
         # already in idle state since __enter__ calls try_enter_idle in the end.
+
+        self.sigwinch = False
         self.loop = True
         while self.loop:
             try:
@@ -1885,15 +1891,22 @@ class NCMPY():
                             self.process(fd='mpd')
                         elif fd == 0 and event & select.POLLIN:
                             self.process(fd='stdin')
-            except select.error:
-                # SIGWINCH will cause select.error,
-                # so no explicit SIGWINCH signal handler is used,
-                # and SIGWINCH before poll starts won't be handled
+            except select.error as e:
+                if self.sigwinch:
+                    self.sigwinch = False
+                else:
+                    raise e
 
-                # reset display
-                self.rdis()
-                # eat up KEY_RESIZE and update
-                self.process(fd='stdin')
+    def handler(self, signum, frame):
+        '''Signal handler.'''
+
+        if signum == signal.SIGWINCH:
+            # reset display
+            self.rdis()
+            # eat up KEY_RESIZE and update
+            self.process(fd='stdin')
+
+            self.sigwinch = True
 
 if __name__ == '__main__':
     try:
@@ -1905,6 +1918,7 @@ if __name__ == '__main__':
             os.makedirs(c.lyrics_dir)
 
         with NCMPY() as ncmpy:
+            signal.signal(signal.SIGWINCH, ncmpy.handler)
             ncmpy.main_loop()
     finally:
         curses.endwin()
