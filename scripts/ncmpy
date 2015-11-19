@@ -86,14 +86,14 @@ class NcmpyMod():
         pass
 
     def _bar_resetw(self, y, x):
-        '''Reset display for bar-like windows.'''
+        '''Reset bar-like windows.'''
 
         self.win.resize(1, self.main.width)
         self.height, self.width = self.win.getmaxyx()
         self.win.mvwin(y, x)
 
     def _block_resetw(self):
-        '''Reset display for block-like windows.'''
+        '''Reset block-like windows.'''
 
         self.win.resize(self.main.height - 4, self.main.width)
         self.height, self.width = self.win.getmaxyx()
@@ -125,10 +125,10 @@ class NcmpyMod():
         else:
             return None
 
-    def _validate(self, n):
+    def _clamp(self, n):
         '''Constrain value in range [0, num).'''
 
-        return max(min(n, self.num - 1), 0)
+        return min(max(n, 0), self.num - 1)
 
     def _search(self, modname, c):
         '''Search in mods.'''
@@ -179,24 +179,28 @@ class NcmpyScroll():
     'ns_' means no selection'''
 
     def __init__(self):
-        self.beg = 0
+        # Number of items in total.
         self.num = 0
-        self.cur = 0
+        # Beginning item.
+        self.beg = 0
+        # Selected item.
         self.sel = 0
+        # Current item.
+        self.cur = 0
 
-    def one_line_down(self):
+    def line_down(self):
         if self.sel < self.num - 1:
             self.sel += 1
             if self.sel - self.beg == self.height:
                 self.beg += 1
 
-    def one_line_up(self):
+    def line_up(self):
         if self.sel > 0:
             self.sel -= 1
             if self.sel - self.beg == -1:
                 self.beg -= 1
 
-    def one_page_down(self):
+    def page_down(self):
         if self.sel < self.num - self.height:
             self.sel += self.height
             self.beg = min(self.beg + self.height, self.num - self.height)
@@ -204,7 +208,7 @@ class NcmpyScroll():
             self.sel = self.num - 1
             self.beg = max(self.num - self.height, 0)
 
-    def one_page_up(self):
+    def page_up(self):
         if self.sel < self.height:
             self.sel = 0
             self.beg = 0
@@ -212,18 +216,18 @@ class NcmpyScroll():
             self.sel -= self.height
             self.beg = max(self.beg - self.height, 0)
 
-    def ns_one_line_down(self):
+    def ns_line_down(self):
         if self.beg < self.num - self.height:
             self.beg += 1
 
-    def ns_one_line_up(self):
+    def ns_line_up(self):
         if self.beg > 0:
             self.beg -= 1
 
-    def ns_one_page_down(self):
+    def ns_page_down(self):
         self.beg = min(self.beg + self.height, self.num - self.height)
 
-    def ns_one_page_up(self):
+    def ns_page_up(self):
         self.beg = max(self.beg - self.height, 0)
 
     def to_top(self):
@@ -235,11 +239,11 @@ class NcmpyScroll():
     def to_bottom(self):
         self.sel = min(self.beg + self.height - 1, self.num - 1)
 
-    def to_begin(self):
+    def to_first(self):
         self.beg = 0
         self.sel = 0
 
-    def to_end(self):
+    def to_last(self):
         self.beg = max(self.num - 1, 0)
         self.sel = max(self.num - 1, 0)
 
@@ -538,13 +542,13 @@ class NcmpyHelp(NcmpyMod, NcmpyScroll):
 
     def round1(self, c):
         if c == ord('j'):
-            self.ns_one_line_down()
+            self.ns_line_down()
         elif c == ord('k'):
-            self.ns_one_line_up()
+            self.ns_line_up()
         elif c == ord('f'):
-            self.ns_one_page_down()
+            self.ns_page_down()
         elif c == ord('b'):
-            self.ns_one_page_up()
+            self.ns_page_up()
 
     def updatew(self):
         self.win.erase()
@@ -591,8 +595,8 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
         if self._version != int(self.main.status['playlist']):
             self._queue = self.mpc.playlistinfo()
             self.num = len(self._queue)
-            self.beg = self._validate(self.beg)
-            self.sel = self._validate(self.sel)
+            self.beg = self._clamp(self.beg)
+            self.sel = self._clamp(self.sel)
             # self.cur is set later, so not validated here
 
             for song in self._queue:
@@ -613,13 +617,13 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
 
     def round1(self, c):
         if c == ord('j'):
-            self.one_line_down()
+            self.line_down()
         elif c == ord('k'):
-            self.one_line_up()
+            self.line_up()
         elif c == ord('f'):
-            self.one_page_down()
+            self.page_down()
         elif c == ord('b'):
-            self.one_page_up()
+            self.page_up()
         elif c == ord('H'):
             self.to_top()
         elif c == ord('M'):
@@ -627,9 +631,9 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
         elif c == ord('L'):
             self.to_bottom()
         elif c == ord('g'):
-            self.to_begin()
+            self.to_first()
         elif c == ord('G'):
-            self.to_end()
+            self.to_last()
         elif c == ord('l'):
             self.locate(self.cur)
         elif c == ord('a'):
@@ -644,9 +648,9 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
                 if self.sel < self.cur:
                     self.cur -= 1
                 self.num -= 1
-                self.beg = self._validate(self.beg)
-                self.sel = self._validate(self.sel)
-                self.cur = self._validate(self.cur)
+                self.beg = self._clamp(self.beg)
+                self.sel = self._clamp(self.sel)
+                self.cur = self._clamp(self.cur)
         elif c == ord('J'):
             if self.sel + 1 < self.num:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel + 1))
@@ -656,7 +660,7 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
                     self.cur += 1
                 elif self.cur == self.sel + 1:
                     self.cur -= 1
-                self.one_line_down()
+                self.line_down()
         elif c == ord('K'):
             if self.sel > 0:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel - 1))
@@ -666,7 +670,7 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
                     self.cur += 1
                 elif self.cur == self.sel:
                     self.cur -= 1
-                self.one_line_up()
+                self.line_up()
         elif c == ord('e'):
             self.mpc.shuffle()
         elif c == ord('\n'):
@@ -749,8 +753,8 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
         view.insert(0, {'directory' : '..'})
         self.num = len(view)
         if keeppos:
-            self.beg = self._validate(self.beg)
-            self.sel = self._validate(self.sel)
+            self.beg = self._clamp(self.beg)
+            self.sel = self._clamp(self.sel)
         else:
             self.beg = 0
             self.sel = 0
@@ -766,13 +770,13 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
 
     def round1(self, c):
         if c == ord('j'):
-            self.one_line_down()
+            self.line_down()
         elif c == ord('k'):
-            self.one_line_up()
+            self.line_up()
         elif c == ord('f'):
-            self.one_page_down()
+            self.page_down()
         elif c == ord('b'):
-            self.one_page_up()
+            self.page_up()
         elif c == ord('H'):
             self.to_top()
         elif c == ord('M'):
@@ -780,9 +784,9 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
         elif c == ord('L'):
             self.to_bottom()
         elif c == ord('g'):
-            self.to_begin()
+            self.to_first()
         elif c == ord('G'):
-            self.to_end()
+            self.to_last()
         elif c == ord('\''):
             old_dir = self._dir
             self._dir = os.path.dirname(self._dir)
@@ -993,13 +997,13 @@ class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
 
     def round1(self, c):
         if c == ord('j'):
-            self.ns_one_line_down()
+            self.ns_line_down()
         elif c == ord('k'):
-            self.ns_one_line_up()
+            self.ns_line_up()
         elif c == ord('f'):
-            self.ns_one_page_down()
+            self.ns_page_down()
         elif c == ord('b'):
-            self.ns_one_page_up()
+            self.ns_page_up()
         elif c == ord('l'):
             self.locate(self.cur)
         elif c == ord('\''):
@@ -1181,13 +1185,13 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
 
     def round1(self, c):
         if c == ord('j'):
-            self.ns_one_line_down()
+            self.ns_line_down()
         elif c == ord('k'):
-            self.ns_one_line_up()
+            self.ns_line_up()
         elif c == ord('f'):
-            self.ns_one_page_down()
+            self.ns_page_down()
         elif c == ord('b'):
-            self.ns_one_page_up()
+            self.ns_page_up()
         elif c == ord('h'):
             if self._prevtmodname:
                 self.board['i_back'] = self._prevtmodname
@@ -1303,13 +1307,13 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
 
     def round1(self, c):
         if c == ord('j'):
-            self.one_line_down()
+            self.line_down()
         elif c == ord('k'):
-            self.one_line_up()
+            self.line_up()
         elif c == ord('f'):
-            self.one_page_down()
+            self.page_down()
         elif c == ord('b'):
-            self.one_page_up()
+            self.page_up()
         elif c == ord('H'):
             self.to_top()
         elif c == ord('M'):
@@ -1317,9 +1321,9 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
         elif c == ord('L'):
             self.to_bottom()
         elif c == ord('g'):
-            self.to_begin()
+            self.to_first()
         elif c == ord('G'):
-            self.to_end()
+            self.to_last()
         elif c == ord('\''):
             if self._type == 'artist':
                 pass
@@ -1439,13 +1443,13 @@ class NcmpySearch(NcmpyMod, NcmpyScroll):
 
     def round1(self, c):
         if c == ord('j'):
-            self.one_line_down()
+            self.line_down()
         elif c == ord('k'):
-            self.one_line_up()
+            self.line_up()
         elif c == ord('f'):
-            self.one_page_down()
+            self.page_down()
         elif c == ord('b'):
-            self.one_page_up()
+            self.page_up()
         elif c == ord('H'):
             self.to_top()
         elif c == ord('M'):
@@ -1453,9 +1457,9 @@ class NcmpySearch(NcmpyMod, NcmpyScroll):
         elif c == ord('L'):
             self.to_bottom()
         elif c == ord('g'):
-            self.to_begin()
+            self.to_first()
         elif c == ord('G'):
-            self.to_end()
+            self.to_last()
         elif c == ord('B'):
             self._view = self._build_view(self.main.e.getstr('Database Search'))
         elif c == ord('\n'):
