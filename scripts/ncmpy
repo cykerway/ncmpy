@@ -31,51 +31,14 @@ import select, sys
 import time, threading
 import urllib
 
+from ncmpy.config import Config
 from ncmpy import lrc, ttplyrics
 
 # ------------------------------
 # global configuration
 # ------------------------------
 
-# Where conf files lie. Order IS important.
-conf_files = [os.path.expanduser('~/.ncmpy/ncmpy.conf'), '/etc/ncmpy.conf']
-
-# global conf
-conf = {}
-
-def read_conf():
-    '''Read global configurations from file.'''
-
-    conf['MPD_HOST'] = 'localhost'
-    conf['MPD_PORT'] = 6600
-    conf['ENABLE_OSD'] = False
-    conf['ENABLE_RATING'] = True
-    conf['LYRICS_DIR'] = os.path.expanduser('~/.ncmpy/lyrics')
-
-    for cf in conf_files:
-        if not os.path.isfile(cf):
-            continue
-        with open(cf, 'rt') as f:
-            l_cnt = 0
-            for l in f:
-                l_cnt += 1
-                if l.startswith('#'):
-                    continue
-                m = re.match(r'(\S+)\s+(\S+)', l)
-                if not m:
-                    continue
-                g = m.groups()
-                if g[0] == 'MPD_HOST':
-                    conf[g[0]] = g[1]
-                elif g[0] == 'MPD_PORT':
-                    conf[g[0]] = int(g[1])
-                elif g[0] in ['ENABLE_OSD', 'ENABLE_RATING']:
-                    conf[g[0]] = g[1].lower() in ['yes', '1']
-                elif g[0] == 'LYRICS_DIR':
-                    conf[g[0]] = os.path.expanduser(g[1])
-                else:
-                    raise Exception('Unknows option {} in conf file {}, line {}'.format(g[0], cf, l_cnt))
-        break
+c = Config()
 
 # ------------------------------
 # DON'T modify code below
@@ -632,7 +595,7 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
             # self.cur is set later, so not validated here
 
             for song in self._queue:
-                if conf['ENABLE_RATING']:
+                if c.enable_rating:
                     try:
                         rating = int(self.mpc.sticker_get('song', song['file'], 'rating').split('=',1)[1])
                     except mpd.CommandError:
@@ -705,7 +668,7 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
         elif c == ord('\n'):
             self.mpc.playid(self._queue[self.sel]['id'])
         elif c in range(ord('1'), ord('5') + 1):
-            if conf['ENABLE_RATING']:
+            if c.enable_rating:
                 rating = c - ord('0')
                 song = self._queue[self.cur]
                 self.mpc.sticker_set('song', song['file'], 'rating', rating)
@@ -955,7 +918,7 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
 
         # directory to save lyrics.
         # Make sure have write permission.
-        self._lyrics_dir = conf['LYRICS_DIR']
+        self._lyrics_dir = c.lyrics_dir
 
         # new song, maintained by module
         self._nsong = None
@@ -980,7 +943,7 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
         self._auto_center = True
 
         # osd engine
-        if conf['ENABLE_OSD']:
+        if c.enable_osd:
             self._osd = pyosd.osd(font='-misc-droid sans mono-medium-r-normal--0-0-0-0-m-0-iso8859-1',
                     colour='#FFFF00',
                     align=pyosd.ALIGN_CENTER,
@@ -1074,7 +1037,7 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
                 else:
                     self._lyrics_state = 'saved'
 
-                if conf['ENABLE_OSD']:
+                if c.enable_osd:
                     self._osdcur = -1
             self._cv.release()
         else:
@@ -1100,7 +1063,7 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
         self.win.noutrefresh()
 
         # osd lyrics if ENABLE_OSD is True
-        if conf['ENABLE_OSD']:
+        if c.enable_osd:
             if self.cur != self._osdcur:
                 self._osd.hide()
                 if self._ltexts:
@@ -1631,7 +1594,7 @@ class NCMPY():
 
     def __enter__(self):
         self._init_curses()
-        self._init_mpd(conf['MPD_HOST'], conf['MPD_PORT'])
+        self._init_mpd(c.mpd_host, c.mpd_port)
         self._init_conf()
         self._init_data()
         self._init_board()
@@ -1788,7 +1751,7 @@ class NCMPY():
             mod.round_two()
 
     def uwin(self):
-        if conf['ENABLE_OSD']:
+        if c.enable_osd:
             self.l.uwin()
 
         self.mdict[self.tmodname].uwin()
@@ -1936,10 +1899,10 @@ if __name__ == '__main__':
     try:
         locale.setlocale(locale.LC_ALL,'')
 
-        read_conf()
+        c.read()
 
-        if not os.path.isdir(conf['LYRICS_DIR']):
-            os.makedirs(conf['LYRICS_DIR'])
+        if not os.path.isdir(c.lyrics_dir):
+            os.makedirs(c.lyrics_dir)
 
         with NCMPY() as ncmpy:
             ncmpy.main_loop()
