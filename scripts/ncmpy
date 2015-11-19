@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 #
-# NCMPY - a [Python + Curses]-based MPD client.
+# Ncmpy - a [Python + Curses]-based MPD client.
 #
 # Copyright (C) 2011 Cyker Way
 #
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-'''NCMPY - a [Python + Curses]-based MPD client.'''
+'''Ncmpy - a [Python + Curses]-based MPD client.'''
 
 import copy
 import curses
@@ -38,17 +38,10 @@ import urllib
 from ncmpy.config import Config
 from ncmpy import lrc, ttplyrics
 
-# ------------------------------
 # global configuration
-# ------------------------------
-
 c = Config()
 
-# ------------------------------
-# DON'T modify code below
-# ------------------------------
-
-class NCMPY_MOD():
+class NcmpyMod():
     '''Base class of all mods'''
 
     def __init__(self, win, main):
@@ -57,7 +50,7 @@ class NCMPY_MOD():
         Parameters:
 
             win - curses.window.
-            main - main control. NCMPY instance.'''
+            main - main control. Ncmpy instance.'''
 
         self.win = win
         self.main = main
@@ -90,14 +83,14 @@ class NCMPY_MOD():
 
         pass
 
-    def _bar_rdis(self, y, x):
+    def _bar_reset_display(self, y, x):
         '''Reset display for bar-like windows.'''
 
         self.win.resize(1, self.main.width)
         self.height, self.width = self.win.getmaxyx()
         self.win.mvwin(y, x)
 
-    def _block_rdis(self):
+    def _block_reset_display(self):
         '''Reset display for block-like windows.'''
 
         self.win.resize(self.main.height - 4, self.main.width)
@@ -106,8 +99,8 @@ class NCMPY_MOD():
 
         self.sel = min(self.sel, self.beg + self.height - 1)
 
-    def rdis(self):
-        '''Reset display use _bar_rdis/_block_rdis.'''
+    def reset_display(self):
+        '''Reset display use _bar_reset_display/_block_reset_display.'''
 
         pass
 
@@ -178,7 +171,7 @@ class NCMPY_MOD():
             if not has_match:
                 self.board['msg'] = 'Pattern not found: {}'.format(self.main.search)
 
-class NCMPY_SCROLL():
+class NcmpyScroll():
     '''Scrolling interface.
 
     'ns_' means no selection'''
@@ -257,11 +250,11 @@ class NCMPY_SCROLL():
             self.beg = 0
         self.sel = pos
 
-class NCMPY_MENU(NCMPY_MOD):
+class NcmpyMenu(NcmpyMod):
     '''Display mod name, play mode and volume.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
+        NcmpyMod.__init__(self, win, main)
         self.win.attron(curses.A_BOLD)
 
     def _make_mode_str(self):
@@ -291,28 +284,28 @@ class NCMPY_MENU(NCMPY_MOD):
         self.win.insstr(0, 0, menu_str)
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._bar_rdis(0, 0)
+    def reset_display(self):
+        self._bar_reset_display(0, 0)
 
-class NCMPY_TITLE(NCMPY_MOD):
+class NcmpyTitle(NcmpyMod):
     '''Hline.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
+        NcmpyMod.__init__(self, win, main)
 
     def uwin(self):
         self.win.erase()
         self.win.insstr(0, 0, self.width * '-')
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._bar_rdis(1, 0)
+    def reset_display(self):
+        self._bar_reset_display(1, 0)
 
-class NCMPY_PROGRESS(NCMPY_MOD):
+class NcmpyProgress(NcmpyMod):
     '''Show playing progress.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
+        NcmpyMod.__init__(self, win, main)
 
     def _make_prog_str(self):
         '''Prepare prog_str.'''
@@ -333,14 +326,14 @@ class NCMPY_PROGRESS(NCMPY_MOD):
         self.win.insstr(0, 0, prog_str)
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._bar_rdis(self.main.height - 2, 0)
+    def reset_display(self):
+        self._bar_reset_display(self.main.height - 2, 0)
 
-class NCMPY_STATUS(NCMPY_MOD):
+class NcmpyStatus(NcmpyMod):
     '''Show playing status, elapsed/total time.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
+        NcmpyMod.__init__(self, win, main)
         self._state_name = {
                 'play' : 'Playing',
                 'stop' : 'Stopped',
@@ -376,14 +369,14 @@ class NCMPY_STATUS(NCMPY_MOD):
         self.win.insstr(0, self.width - len(tm_str), tm_str)
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._bar_rdis(self.main.height - 1, 0)
+    def reset_display(self):
+        self._bar_reset_display(self.main.height - 1, 0)
 
-class NCMPY_MESSAGE(NCMPY_MOD):
+class NcmpyMessage(NcmpyMod):
     '''Show message and get user input.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
+        NcmpyMod.__init__(self, win, main)
         self._msg = None
         self._timeout = 0
 
@@ -414,15 +407,15 @@ class NCMPY_MESSAGE(NCMPY_MOD):
             self.win.noutrefresh()
             self._timeout -= 1
 
-    def rdis(self):
-        self._bar_rdis(self.main.height - 1, 0)
+    def reset_display(self):
+        self._bar_reset_display(self.main.height - 1, 0)
 
-class NCMPY_HELP(NCMPY_MOD, NCMPY_SCROLL):
+class NcmpyHelp(NcmpyMod, NcmpyScroll):
     '''Help.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
-        NCMPY_SCROLL.__init__(self)
+        NcmpyMod.__init__(self, win, main)
+        NcmpyScroll.__init__(self)
         self._options = [
                 ('group', 'Global', None),
                 ('hline', None, None),
@@ -567,15 +560,15 @@ class NCMPY_HELP(NCMPY_MOD, NCMPY_SCROLL):
                 pass
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._block_rdis()
+    def reset_display(self):
+        self._block_reset_display()
 
-class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
+class NcmpyQueue(NcmpyMod, NcmpyScroll):
     '''Queue = current playlist.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
-        NCMPY_SCROLL.__init__(self)
+        NcmpyMod.__init__(self, win, main)
+        NcmpyScroll.__init__(self)
 
         self.nsks = [ord('l'), ord('\'')]
         self.psks = [ord('d'), ord('J'), ord('K')]
@@ -587,7 +580,7 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
         self._auto_center = False
 
     def udata(self):
-        NCMPY_MOD.udata(self)
+        NcmpyMod.udata(self)
 
         if self.main.c in self.main.allpsks:
             return
@@ -730,15 +723,15 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
                 self.win.attroff(curses.A_BOLD)
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._block_rdis()
+    def reset_display(self):
+        self._block_reset_display()
 
-class NCMPY_DATABASE(NCMPY_MOD, NCMPY_SCROLL):
+class NcmpyDatabase(NcmpyMod, NcmpyScroll):
     '''All songs/directories/playlists in database.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
-        NCMPY_SCROLL.__init__(self)
+        NcmpyMod.__init__(self, win, main)
+        NcmpyScroll.__init__(self)
 
         # current displayed dir
         self._dir = ''
@@ -762,7 +755,7 @@ class NCMPY_DATABASE(NCMPY_MOD, NCMPY_SCROLL):
         return view
 
     def udata(self):
-        NCMPY_MOD.udata(self)
+        NcmpyMod.udata(self)
 
         if self.board.get('main-database') == 'updated':
             self._dir = ''
@@ -914,15 +907,15 @@ class NCMPY_DATABASE(NCMPY_MOD, NCMPY_SCROLL):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._block_rdis()
+    def reset_display(self):
+        self._block_reset_display()
 
-class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
+class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
     '''Display lyrics.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
-        NCMPY_SCROLL.__init__(self)
+        NcmpyMod.__init__(self, win, main)
+        NcmpyScroll.__init__(self)
         threading.Thread.__init__(self, name='lyrics')
 
         # directory to save lyrics.
@@ -971,7 +964,7 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
             return tag.replace(' ', '').lower()
 
     def udata(self):
-        NCMPY_MOD.udata(self)
+        NcmpyMod.udata(self)
 
         song = self.currentsong
 
@@ -1109,10 +1102,10 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
                     self._lyrics_state = 'net'
             self._osong = self._nsong
 
-    def rdis(self):
-        self._block_rdis()
+    def reset_display(self):
+        self._block_reset_display()
 
-class NCMPY_INFO(NCMPY_MOD, NCMPY_SCROLL):
+class NcmpyInfo(NcmpyMod, NcmpyScroll):
     '''Information about songs:
 
         currently playing
@@ -1120,8 +1113,8 @@ class NCMPY_INFO(NCMPY_MOD, NCMPY_SCROLL):
         currently selected in database'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
-        NCMPY_SCROLL.__init__(self)
+        NcmpyMod.__init__(self, win, main)
+        NcmpyScroll.__init__(self)
         self._prevtmodname = None
         # current playing
         self._cp = {}
@@ -1273,15 +1266,15 @@ class NCMPY_INFO(NCMPY_MOD, NCMPY_SCROLL):
                 pass
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._block_rdis()
+    def reset_display(self):
+        self._block_reset_display()
 
-class NCMPY_ARTIST_ALBUM(NCMPY_MOD, NCMPY_SCROLL):
+class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
     '''List artists/albums in database.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
-        NCMPY_SCROLL.__init__(self)
+        NcmpyMod.__init__(self, win, main)
+        NcmpyScroll.__init__(self)
 
         # current displayed dir
         self._type = 'artist'
@@ -1413,15 +1406,15 @@ class NCMPY_ARTIST_ALBUM(NCMPY_MOD, NCMPY_SCROLL):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._block_rdis()
+    def reset_display(self):
+        self._block_reset_display()
 
-class NCMPY_SEARCH(NCMPY_MOD, NCMPY_SCROLL):
+class NcmpySearch(NcmpyMod, NcmpyScroll):
     '''Search in the database.'''
 
     def __init__(self, win, main):
-        NCMPY_MOD.__init__(self, win, main)
-        NCMPY_SCROLL.__init__(self)
+        NcmpyMod.__init__(self, win, main)
+        NcmpyScroll.__init__(self)
 
         self._view = []
 
@@ -1501,10 +1494,10 @@ class NCMPY_SEARCH(NCMPY_MOD, NCMPY_SCROLL):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def rdis(self):
-        self._block_rdis()
+    def reset_display(self):
+        self._block_reset_display()
 
-class NCMPY():
+class Ncmpy():
     '''Main controller.'''
 
     def _init_curses(self):
@@ -1567,18 +1560,18 @@ class NCMPY():
     def _init_mods(self):
         '''Initialize modules (mods).'''
 
-        self.m = NCMPY_MENU(self.stdscr.subwin(1, self.width, 0, 0), self)
-        self.t = NCMPY_TITLE(self.stdscr.subwin(1, self.width, 1, 0), self)
-        self.p = NCMPY_PROGRESS(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)
-        self.s = NCMPY_STATUS(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
-        self.e = NCMPY_MESSAGE(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
-        self.h = NCMPY_HELP(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.q = NCMPY_QUEUE(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.d = NCMPY_DATABASE(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.l = NCMPY_LYRICS(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.a = NCMPY_ARTIST_ALBUM(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.r = NCMPY_SEARCH(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.i = NCMPY_INFO(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.m = NcmpyMenu(self.stdscr.subwin(1, self.width, 0, 0), self)
+        self.t = NcmpyTitle(self.stdscr.subwin(1, self.width, 1, 0), self)
+        self.p = NcmpyProgress(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)
+        self.s = NcmpyStatus(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
+        self.e = NcmpyMessage(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
+        self.h = NcmpyHelp(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.q = NcmpyQueue(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.d = NcmpyDatabase(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.l = NcmpyLyrics(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.a = NcmpyArtistAlbum(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.r = NcmpySearch(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.i = NcmpyInfo(curses.newwin(self.height - 4, self.width, 2, 0), self)
 
         # module dict
         self.mdict = {
@@ -1871,24 +1864,22 @@ class NCMPY():
         else:
             self.try_enter_idle()
 
-    def rdis(self):
-        '''Reset display.
-
-        Called when SIGWINCH is caught.'''
+    def reset_display(self):
+        '''Reset display. Called in SIGWINCH handler.'''
 
         curses.endwin()
         self.stdscr.refresh()
         self.height, self.width = self.stdscr.getmaxyx()
 
         for mod in self.mlist:
-            mod.rdis()
+            mod.reset_display()
 
     def main_loop(self):
         '''Main loop.'''
 
         poll = select.poll()
         poll.register(self.mpc.fileno(), select.POLLIN)
-        poll.register(0, select.POLLIN)
+        poll.register(sys.stdin.fileno(), select.POLLIN)
 
         # already in idle state since __enter__ calls try_enter_idle in the end.
 
@@ -1902,7 +1893,7 @@ class NCMPY():
                     for fd, event in responses:
                         if fd == self.mpc.fileno() and event & select.POLLIN:
                             self.process('mpd')
-                        elif fd == 0 and event & select.POLLIN:
+                        elif fd == sys.stdin.fileno() and event & select.POLLIN:
                             self.process('stdin')
             except select.error as e:
                 # Ignore poll interruption.
@@ -1912,9 +1903,9 @@ class NCMPY():
         '''Signal handler.'''
 
         if signum == signal.SIGWINCH:
-            # reset display
-            self.rdis()
-            # eat up KEY_RESIZE and update
+            # Reset display.
+            self.reset_display()
+            # Consume KEY_RESIZE and update.
             self.process('stdin')
 
 if __name__ == '__main__':
@@ -1926,7 +1917,7 @@ if __name__ == '__main__':
         if not os.path.isdir(c.lyrics_dir):
             os.makedirs(c.lyrics_dir)
 
-        with NCMPY() as ncmpy:
+        with Ncmpy() as ncmpy:
             signal.signal(signal.SIGWINCH, ncmpy.handler)
             ncmpy.main_loop()
     finally:
