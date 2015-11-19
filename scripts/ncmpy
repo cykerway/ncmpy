@@ -1622,7 +1622,7 @@ class NCMPY():
         self.l.start()
 
         # initial update
-        self.process(fd='init')
+        self.process('init')
 
         return self
 
@@ -1898,13 +1898,13 @@ class NCMPY():
             try:
                 responses = poll.poll(200)
                 if not responses:
-                    self.process(fd='timeout')
+                    self.process('timeout')
                 else:
                     for fd, event in responses:
                         if fd == self.mpc.fileno() and event & select.POLLIN:
-                            self.process(fd='mpd')
+                            self.process('mpd')
                         elif fd == 0 and event & select.POLLIN:
-                            self.process(fd='stdin')
+                            self.process('stdin')
             except select.error as e:
                 if self.sigwinch:
                     self.sigwinch = False
@@ -1918,7 +1918,7 @@ class NCMPY():
             # reset display
             self.rdis()
             # eat up KEY_RESIZE and update
-            self.process(fd='stdin')
+            self.process('stdin')
 
             self.sigwinch = True
 
