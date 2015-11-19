@@ -85,15 +85,15 @@ class NcmpyMod():
 
         pass
 
-    def _bar_resetw(self, y, x):
-        '''Reset bar-like windows.'''
+    def _bar_resizew(self, y, x):
+        '''Resize bar window.'''
 
         self.win.resize(1, self.main.width)
         self.height, self.width = self.win.getmaxyx()
         self.win.mvwin(y, x)
 
-    def _block_resetw(self):
-        '''Reset block-like windows.'''
+    def _block_resizew(self):
+        '''Resize block window.'''
 
         self.win.resize(self.main.height - 4, self.main.width)
         self.height, self.width = self.win.getmaxyx()
@@ -101,8 +101,8 @@ class NcmpyMod():
 
         self.sel = min(self.sel, self.beg + self.height - 1)
 
-    def resetw(self):
-        '''Reset display use _bar_resetw/_block_resetw.'''
+    def resizew(self):
+        '''Resize window using _bar_resizew/_block_resizew.'''
 
         pass
 
@@ -230,13 +230,13 @@ class NcmpyScroll():
     def ns_page_up(self):
         self.beg = max(self.beg - self.height, 0)
 
-    def to_top(self):
+    def select_top(self):
         self.sel = self.beg
 
-    def to_middle(self):
+    def select_middle(self):
         self.sel = min(self.beg + self.height / 2, self.num - 1)
 
-    def to_bottom(self):
+    def select_bottom(self):
         self.sel = min(self.beg + self.height - 1, self.num - 1)
 
     def to_first(self):
@@ -248,7 +248,7 @@ class NcmpyScroll():
         self.sel = max(self.num - 1, 0)
 
     def locate(self, pos):
-        '''Locate sel at pos, and put in the center.'''
+        '''Select pos, and put in the center.'''
 
         if pos >= self.height / 2:
             self.beg = pos - self.height / 2
@@ -259,42 +259,42 @@ class NcmpyScroll():
 class NcmpyMenu(NcmpyMod):
     '''Display mod name, play mode and volume.'''
 
+    BLANK = ' ' * 5
+
     def __init__(self, win, main):
         NcmpyMod.__init__(self, win, main)
         self.win.attron(curses.A_BOLD)
 
-    def _make_mode_str(self):
-        '''Prepare mode_str.'''
+    def make_mode_str(self):
+        '''Make mode string.'''
 
-        blank = ' ' * 5
-        return (int(self.status['consume']) and '[con]' or blank) + \
-                (int(self.status['random']) and '[ran]' or blank) + \
-                (int(self.status['repeat']) and '[rep]' or blank) + \
-                (int(self.status['single']) and '[sin]' or blank)
+        return ('[con]' if int(self.status['consume']) else self.BLANK) + \
+                ('[ran]' if int(self.status['random']) else self.BLANK) + \
+                ('[rep]' if int(self.status['repeat']) else self.BLANK) + \
+                ('[sin]' if int(self.status['single']) else self.BLANK)
 
-    def _make_menu_str(self):
+    def make_menu_str(self):
         title_str = self.main.tmodname
-        mode_str = self._make_mode_str()
+        mode_str = self.make_mode_str()
         vol_str = 'Volume: ' + self.status['volume'] + '%'
-        state_str = '{mode}    {vol}'.format(mode=mode_str, vol=vol_str)
+        state_str = '{}    {}'.format(mode_str, vol_str)
         title_len = self.width - len(state_str)
         return title_str[:title_len].ljust(title_len) + state_str
 
     def updatew(self):
-        menu_str = self._make_menu_str()
+        menu_str = self.make_menu_str()
 
-        # must use insstr instead of addstr, since addstr cannot
-        # draw to the last character (will raise an exception).
-        # Similar cases follow in other mods.
+        # Must use insstr instead of addstr, because addstr cannot draw the last character (will
+        # raise an exception). The same applies to other mods.
         self.win.erase()
         self.win.insstr(0, 0, menu_str)
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._bar_resetw(0, 0)
+    def resizew(self):
+        self._bar_resizew(0, 0)
 
-class NcmpyTitle(NcmpyMod):
-    '''Hline.'''
+class NcmpyLine(NcmpyMod):
+    '''Horizontal line.'''
 
     def __init__(self, win, main):
         NcmpyMod.__init__(self, win, main)
@@ -304,8 +304,8 @@ class NcmpyTitle(NcmpyMod):
         self.win.insstr(0, 0, self.width * '-')
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._bar_resetw(1, 0)
+    def resizew(self):
+        self._bar_resizew(1, 0)
 
 class NcmpyProgress(NcmpyMod):
     '''Show playing progress.'''
@@ -313,27 +313,27 @@ class NcmpyProgress(NcmpyMod):
     def __init__(self, win, main):
         NcmpyMod.__init__(self, win, main)
 
-    def _make_prog_str(self):
+    def make_prog_str(self):
         '''Prepare prog_str.'''
 
-        # no 'time' option in mpd's status if stopped
-        tm = self.status.get('time')
-        if tm:
+        state = self.status.get('state')
+        if state == 'stop':
+            return '-' * self.width
+        else:
+            tm = self.status.get('time')
             elapsed, total = tm.split(':')
             pos = int((float(elapsed) / float(total)) * (self.width - 1))
             return '=' * pos + '0' + '-' * (self.width - pos - 1)
-        else:
-            return '-' * self.width
 
     def updatew(self):
-        prog_str = self._make_prog_str()
+        prog_str = self.make_prog_str()
 
         self.win.erase()
         self.win.insstr(0, 0, prog_str)
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._bar_resetw(self.main.height - 2, 0)
+    def resizew(self):
+        self._bar_resizew(self.main.height - 2, 0)
 
 class NcmpyStatus(NcmpyMod):
     '''Show playing status, elapsed/total time.'''
@@ -347,14 +347,15 @@ class NcmpyStatus(NcmpyMod):
                 }
         self.win.attron(curses.A_BOLD)
 
-    def _make_title_str(self):
+    def make_title_str(self):
         '''Prepare title_str.'''
 
+        state = self.status.get('state')
         song = self.currentsong
         title = song and (song.get('title') or os.path.basename(song.get('file'))) or ''
-        return '{} > {}'.format(self._state_name[self.status['state']], title)
+        return '{} > {}'.format(self._state_name[state], title)
 
-    def _make_tm_str(self):
+    def make_tm_str(self):
         '''Prepare tm_str.'''
 
         tm = self.status.get('time') or '0:0'
@@ -365,18 +366,17 @@ class NcmpyStatus(NcmpyMod):
         return '[{0}:{1:02d} ~ {2}:{3:02d}]'.format(elapsed_mm, elapsed_ss, total_mm, total_ss)
 
     def updatew(self):
-        # use two strs because it's difficult to calculate
-        # display length of unicode characters
-        title_str = self._make_title_str()
-        tm_str = self._make_tm_str()
+        # Use two strs because it's difficult to calculate display length of unicode characters.
+        title_str = self.make_title_str()
+        tm_str = self.make_tm_str()
 
         self.win.erase()
         self.win.insstr(0, 0, title_str)
         self.win.insstr(0, self.width - len(tm_str), tm_str)
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._bar_resetw(self.main.height - 1, 0)
+    def resizew(self):
+        self._bar_resizew(self.main.height - 1, 0)
 
 class NcmpyMessage(NcmpyMod):
     '''Show message and get user input.'''
@@ -407,14 +407,15 @@ class NcmpyMessage(NcmpyMod):
             self._msg = msg
             self._timeout = 5
 
+        # TODO. Use a real timer.
         if self._timeout > 0:
             self.win.erase()
             self.win.insstr(0, 0, self._msg, curses.A_BOLD)
             self.win.noutrefresh()
             self._timeout -= 1
 
-    def resetw(self):
-        self._bar_resetw(self.main.height - 1, 0)
+    def resizew(self):
+        self._bar_resizew(self.main.height - 1, 0)
 
 class NcmpyHelp(NcmpyMod, NcmpyScroll):
     '''Help.'''
@@ -566,8 +567,8 @@ class NcmpyHelp(NcmpyMod, NcmpyScroll):
                 pass
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._block_resetw()
+    def resizew(self):
+        self._block_resizew()
 
 class NcmpyQueue(NcmpyMod, NcmpyScroll):
     '''Queue = current playlist.'''
@@ -625,11 +626,11 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
         elif c == ord('b'):
             self.page_up()
         elif c == ord('H'):
-            self.to_top()
+            self.select_top()
         elif c == ord('M'):
-            self.to_middle()
+            self.select_middle()
         elif c == ord('L'):
-            self.to_bottom()
+            self.select_bottom()
         elif c == ord('g'):
             self.to_first()
         elif c == ord('G'):
@@ -729,8 +730,8 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
                 self.win.attroff(curses.A_BOLD)
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._block_resetw()
+    def resizew(self):
+        self._block_resizew()
 
 class NcmpyDatabase(NcmpyMod, NcmpyScroll):
     '''All songs/directories/playlists in database.'''
@@ -778,11 +779,11 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
         elif c == ord('b'):
             self.page_up()
         elif c == ord('H'):
-            self.to_top()
+            self.select_top()
         elif c == ord('M'):
-            self.to_middle()
+            self.select_middle()
         elif c == ord('L'):
-            self.to_bottom()
+            self.select_bottom()
         elif c == ord('g'):
             self.to_first()
         elif c == ord('G'):
@@ -913,8 +914,8 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._block_resetw()
+    def resizew(self):
+        self._block_resizew()
 
 class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
     '''Display lyrics.'''
@@ -1108,8 +1109,8 @@ class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
                     self._lyrics_state = 'net'
             self._osong = self._nsong
 
-    def resetw(self):
-        self._block_resetw()
+    def resizew(self):
+        self._block_resizew()
 
 class NcmpyInfo(NcmpyMod, NcmpyScroll):
     '''Information about songs:
@@ -1272,8 +1273,8 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
                 pass
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._block_resetw()
+    def resizew(self):
+        self._block_resizew()
 
 class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
     '''List artists/albums in database.'''
@@ -1315,11 +1316,11 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
         elif c == ord('b'):
             self.page_up()
         elif c == ord('H'):
-            self.to_top()
+            self.select_top()
         elif c == ord('M'):
-            self.to_middle()
+            self.select_middle()
         elif c == ord('L'):
-            self.to_bottom()
+            self.select_bottom()
         elif c == ord('g'):
             self.to_first()
         elif c == ord('G'):
@@ -1412,8 +1413,8 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._block_resetw()
+    def resizew(self):
+        self._block_resizew()
 
 class NcmpySearch(NcmpyMod, NcmpyScroll):
     '''Search in the database.'''
@@ -1451,11 +1452,11 @@ class NcmpySearch(NcmpyMod, NcmpyScroll):
         elif c == ord('b'):
             self.page_up()
         elif c == ord('H'):
-            self.to_top()
+            self.select_top()
         elif c == ord('M'):
-            self.to_middle()
+            self.select_middle()
         elif c == ord('L'):
-            self.to_bottom()
+            self.select_bottom()
         elif c == ord('g'):
             self.to_first()
         elif c == ord('G'):
@@ -1500,8 +1501,8 @@ class NcmpySearch(NcmpyMod, NcmpyScroll):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def resetw(self):
-        self._block_resetw()
+    def resizew(self):
+        self._block_resizew()
 
 class Ncmpy():
     '''Main controller.'''
@@ -1567,7 +1568,7 @@ class Ncmpy():
         '''Initialize modules (mods).'''
 
         self.m = NcmpyMenu(self.stdscr.subwin(1, self.width, 0, 0), self)
-        self.t = NcmpyTitle(self.stdscr.subwin(1, self.width, 1, 0), self)
+        self.t = NcmpyLine(self.stdscr.subwin(1, self.width, 1, 0), self)
         self.p = NcmpyProgress(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)
         self.s = NcmpyStatus(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
         self.e = NcmpyMessage(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
@@ -1870,7 +1871,7 @@ class Ncmpy():
         else:
             self.try_enter_idle()
 
-    def resetw(self):
+    def resizew(self):
         '''Reset display. Called in SIGWINCH handler.'''
 
         curses.endwin()
@@ -1878,7 +1879,7 @@ class Ncmpy():
         self.height, self.width = self.stdscr.getmaxyx()
 
         for mod in self.mlist:
-            mod.resetw()
+            mod.resizew()
 
     def main_loop(self):
         '''Main loop.'''
@@ -1909,8 +1910,8 @@ class Ncmpy():
         '''Signal handler.'''
 
         if signum == signal.SIGWINCH:
-            # Reset display.
-            self.resetw()
+            # Resize window.
+            self.resizew()
             # Consume KEY_RESIZE and update.
             self.process('stdin')
 
