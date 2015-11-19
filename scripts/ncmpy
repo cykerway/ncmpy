@@ -1892,7 +1892,6 @@ class NCMPY():
 
         # already in idle state since __enter__ calls try_enter_idle in the end.
 
-        self.sigwinch = False
         self.loop = True
         while self.loop:
             try:
@@ -1906,10 +1905,8 @@ class NCMPY():
                         elif fd == 0 and event & select.POLLIN:
                             self.process('stdin')
             except select.error as e:
-                if self.sigwinch:
-                    self.sigwinch = False
-                else:
-                    raise e
+                # Ignore poll interruption.
+                pass
 
     def handler(self, signum, frame):
         '''Signal handler.'''
@@ -1919,8 +1916,6 @@ class NCMPY():
             self.rdis()
             # eat up KEY_RESIZE and update
             self.process('stdin')
-
-            self.sigwinch = True
 
 if __name__ == '__main__':
     try:
