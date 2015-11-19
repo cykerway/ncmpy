@@ -1,5 +1,5 @@
 #! /usr/bin/python2
-# -*- Mode: python; coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*- 
+# -*- Mode: python; coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*-
 #
 # Copyright 2007 Sevenever
 # Copyright (C) 2007 Sevenever
@@ -9,7 +9,7 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -102,8 +102,8 @@ def fetch_lyrics(artist, title):
 
     try:
         url = 'http://ttlrcct2.qianqian.com/dll/lyricsvr.dll?sh?Artist={}&Title={}&Flags=0'.format(
-                EncodeArtTit(artist.replace(' ','').lower()), 
-                EncodeArtTit(title.replace(' ','').lower()), 
+                EncodeArtTit(artist.replace(' ','').lower()),
+                EncodeArtTit(title.replace(' ','').lower()),
                 )
         req = urllib2.Request(url, None, headers)
         handle = urllib2.urlopen(req)
@@ -123,8 +123,8 @@ def fetch_lyrics(artist, title):
 
         try:
             url = 'http://ttlrcct2.qianqian.com/dll/lyricsvr.dll?dl?Id=%d&Code=%d&uid=01&mac=%012x' % (
-                    int(li[0]), 
-                    CodeFunc(int(li[0]), (li[1] + li[2]).encode('UTF-8')), 
+                    int(li[0]),
+                    CodeFunc(int(li[0]), (li[1] + li[2]).encode('UTF-8')),
                     random.randint(0,0xFFFFFFFFFFFF)
                     )
             req = urllib2.Request(url, None, headers)

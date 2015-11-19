@@ -2,19 +2,19 @@
 # -*- coding: utf-8 -*-
 #
 # NCMPY - a [Python + Curses]-based MPD client.
-# 
+#
 # Copyright (C) 2011 Cyker Way
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -86,7 +86,7 @@ class NCMPY_MOD():
 
     def __init__(self, win, main):
         '''Initializer.
-        
+
         Parameters:
 
             win - curses.window.
@@ -103,7 +103,7 @@ class NCMPY_MOD():
 
     def udata(self):
         '''Update data.'''
-        
+
         self.status = self.main.status
         self.stats = self.main.stats
         self.currentsong = self.main.currentsong
@@ -178,9 +178,9 @@ class NCMPY_MOD():
 
         if self.main.search and self.main.search_di:
             di = {
-                    ord('/') : 1, 
-                    ord('?') : -1, 
-                    ord('n') : self.main.search_di, 
+                    ord('/') : 1,
+                    ord('?') : -1,
+                    ord('n') : self.main.search_di,
                     ord('N') : -self.main.search_di
                     }[c]
             has_match = False
@@ -212,7 +212,7 @@ class NCMPY_MOD():
 
 class NCMPY_SCROLL():
     '''Scrolling interface.
-    
+
     'ns_' means no selection'''
 
     def __init__(self):
@@ -316,8 +316,8 @@ class NCMPY_MENU(NCMPY_MOD):
     def uwin(self):
         menu_str = self._make_menu_str()
 
-        # must use insstr instead of addstr, since addstr cannot 
-        # draw to the last character (will raise an exception). 
+        # must use insstr instead of addstr, since addstr cannot
+        # draw to the last character (will raise an exception).
         # Similar cases follow in other mods.
         self.win.erase()
         self.win.insstr(0, 0, menu_str)
@@ -397,7 +397,7 @@ class NCMPY_STATUS(NCMPY_MOD):
         return '[{0}:{1:02d} ~ {2}:{3:02d}]'.format(elapsed_mm, elapsed_ss, total_mm, total_ss)
 
     def uwin(self):
-        # use two strs because it's difficult to calculate 
+        # use two strs because it's difficult to calculate
         # display length of unicode characters
         title_str = self._make_title_str()
         tm_str = self._make_tm_str()
@@ -455,120 +455,120 @@ class NCMPY_HELP(NCMPY_MOD, NCMPY_SCROLL):
         NCMPY_MOD.__init__(self, win, main)
         NCMPY_SCROLL.__init__(self)
         self._options = [
-                ('group', 'Global', None), 
-                ('hline', None, None), 
-                ('item', 'F1', 'Help'), 
-                ('item', 'F2', 'Queue'), 
-                ('item', 'F3', 'Database'), 
-                ('item', 'F4', 'Lyrics'), 
-                ('item', 'F5', 'Artist-Album'), 
-                ('item', 'F6', 'Search'), 
-                ('blank', None, None), 
-                ('item', 'q', 'quit'), 
-                ('blank', None, None), 
+                ('group', 'Global', None),
+                ('hline', None, None),
+                ('item', 'F1', 'Help'),
+                ('item', 'F2', 'Queue'),
+                ('item', 'F3', 'Database'),
+                ('item', 'F4', 'Lyrics'),
+                ('item', 'F5', 'Artist-Album'),
+                ('item', 'F6', 'Search'),
+                ('blank', None, None),
+                ('item', 'q', 'quit'),
+                ('blank', None, None),
 
-                ('group', 'Playback', None), 
-                ('hline', None, None), 
-                ('item', 'Space', 'Play/Pause'), 
-                ('item', 's', 'Stop'), 
-                ('item', '>', 'next song'), 
-                ('item', '<', 'previous song'), 
-                ('blank', None, None), 
-                ('item', 'u', 'consume mode'), 
-                ('item', 'i', 'random mode'), 
-                ('item', 'o', 'repeat mode'), 
-                ('item', 'p', 'single mode'), 
-                ('blank', None, None), 
-                ('item', '9', 'volume down'), 
-                ('item', '0', 'volume up'), 
-                ('blank', None, None), 
-                ('item', 'left', 'seek +1'), 
-                ('item', 'right', 'seek -1'), 
-                ('item', 'down', 'seek -1%'), 
-                ('item', 'up', 'seek +1%'), 
-                ('blank', None, None), 
+                ('group', 'Playback', None),
+                ('hline', None, None),
+                ('item', 'Space', 'Play/Pause'),
+                ('item', 's', 'Stop'),
+                ('item', '>', 'next song'),
+                ('item', '<', 'previous song'),
+                ('blank', None, None),
+                ('item', 'u', 'consume mode'),
+                ('item', 'i', 'random mode'),
+                ('item', 'o', 'repeat mode'),
+                ('item', 'p', 'single mode'),
+                ('blank', None, None),
+                ('item', '9', 'volume down'),
+                ('item', '0', 'volume up'),
+                ('blank', None, None),
+                ('item', 'left', 'seek +1'),
+                ('item', 'right', 'seek -1'),
+                ('item', 'down', 'seek -1%'),
+                ('item', 'up', 'seek +1%'),
+                ('blank', None, None),
 
-                ('group', 'Movement', None), 
-                ('hline', None, None), 
-                ('item', 'j', 'go one line down'), 
-                ('item', 'k', 'go one line up'), 
-                ('item', 'f', 'go one page down'), 
-                ('item', 'b', 'go one page up'), 
-                ('item', 'g', 'go to top of list'), 
-                ('item', 'G', 'go to bottom of list'), 
-                ('item', 'H', 'go to top of screen'), 
-                ('item', 'M', 'go to middle of screen'), 
-                ('item', 'L', 'go to bottom of screen'), 
-                ('blank', None, None), 
-                ('item', '/', 'search down'), 
-                ('item', '?', 'search up'), 
-                ('item', 'n', 'next match'), 
-                ('item', 'N', 'previous match'), 
-                ('blank', None, None), 
+                ('group', 'Movement', None),
+                ('hline', None, None),
+                ('item', 'j', 'go one line down'),
+                ('item', 'k', 'go one line up'),
+                ('item', 'f', 'go one page down'),
+                ('item', 'b', 'go one page up'),
+                ('item', 'g', 'go to top of list'),
+                ('item', 'G', 'go to bottom of list'),
+                ('item', 'H', 'go to top of screen'),
+                ('item', 'M', 'go to middle of screen'),
+                ('item', 'L', 'go to bottom of screen'),
+                ('blank', None, None),
+                ('item', '/', 'search down'),
+                ('item', '?', 'search up'),
+                ('item', 'n', 'next match'),
+                ('item', 'N', 'previous match'),
+                ('blank', None, None),
 
-                ('group', 'Queue', ''), 
-                ('hline', None, None), 
-                ('item', 'Enter', 'Play'), 
-                ('item', 'l', 'select and center current song'), 
-                ('item', '\'', 'toggle auto center'), 
-                ('item', ';', 'locate selected song in database'), 
-                ('item', 'h', 'get info about current/selected song'), 
-                ('blank', None, None), 
-                ('item', '1', 'rate selected song as     *'), 
-                ('item', '2', 'rate selected song as    **'), 
-                ('item', '3', 'rate selected song as   ***'), 
-                ('item', '4', 'rate selected song as  ****'), 
-                ('item', '5', 'rate selected song as *****'), 
-                ('blank', None, None), 
-                ('item', 'J', 'Move down selected song'), 
-                ('item', 'K', 'Move up selected song'), 
-                ('item', 'e', 'shuffle queue'), 
-                ('item', 'c', 'clear queue'), 
-                ('item', 'a', 'add all songs from database'), 
-                ('item', 'd', 'delete selected song from queue'), 
-                ('item', 'S', 'save queue to playlist'), 
-                ('item', 'O', 'load queue from playlist'), 
-                ('blank', None, None), 
+                ('group', 'Queue', ''),
+                ('hline', None, None),
+                ('item', 'Enter', 'Play'),
+                ('item', 'l', 'select and center current song'),
+                ('item', '\'', 'toggle auto center'),
+                ('item', ';', 'locate selected song in database'),
+                ('item', 'h', 'get info about current/selected song'),
+                ('blank', None, None),
+                ('item', '1', 'rate selected song as     *'),
+                ('item', '2', 'rate selected song as    **'),
+                ('item', '3', 'rate selected song as   ***'),
+                ('item', '4', 'rate selected song as  ****'),
+                ('item', '5', 'rate selected song as *****'),
+                ('blank', None, None),
+                ('item', 'J', 'Move down selected song'),
+                ('item', 'K', 'Move up selected song'),
+                ('item', 'e', 'shuffle queue'),
+                ('item', 'c', 'clear queue'),
+                ('item', 'a', 'add all songs from database'),
+                ('item', 'd', 'delete selected song from queue'),
+                ('item', 'S', 'save queue to playlist'),
+                ('item', 'O', 'load queue from playlist'),
+                ('blank', None, None),
 
-                ('group', 'Database', ''), 
-                ('hline', None, None), 
-                ('item', 'Enter', 'open directory / append to queue (if not existing yet) and play / load playlist'), 
-                ('item', '\'', 'go to parent directory'), 
-                ('item', '"', 'go to root directory'), 
-                ('item', 'a', 'append song to queue recursively'), 
-                ('item', ';', 'locate selected song in queue'), 
-                ('item', 'h', 'get info about selected song'), 
-                ('item', 'U', 'update database'), 
-                ('blank', None, None), 
+                ('group', 'Database', ''),
+                ('hline', None, None),
+                ('item', 'Enter', 'open directory / append to queue (if not existing yet) and play / load playlist'),
+                ('item', '\'', 'go to parent directory'),
+                ('item', '"', 'go to root directory'),
+                ('item', 'a', 'append song to queue recursively'),
+                ('item', ';', 'locate selected song in queue'),
+                ('item', 'h', 'get info about selected song'),
+                ('item', 'U', 'update database'),
+                ('blank', None, None),
 
-                ('group', 'Lyrics', ''), 
-                ('hline', None, None), 
-                ('item', 'l', 'center current line'), 
-                ('item', '\'', 'toggle auto center'), 
-                ('item', 'K', 'save lyrics'), 
-                ('blank', None, None), 
+                ('group', 'Lyrics', ''),
+                ('hline', None, None),
+                ('item', 'l', 'center current line'),
+                ('item', '\'', 'toggle auto center'),
+                ('item', 'K', 'save lyrics'),
+                ('blank', None, None),
 
-                ('group', 'Artist-Album', ''), 
-                ('hline', None, None), 
-                ('item', 'Enter', 'open level / append to queue (if not existing yet) and play'), 
-                ('item', '\'', 'go to parent level'), 
-                ('item', '"', 'go to root level'), 
-                ('item', 'a', 'append song to queue recursively'), 
-                ('item', ';', 'locate selected song in queue'), 
-                ('blank', None, None), 
+                ('group', 'Artist-Album', ''),
+                ('hline', None, None),
+                ('item', 'Enter', 'open level / append to queue (if not existing yet) and play'),
+                ('item', '\'', 'go to parent level'),
+                ('item', '"', 'go to root level'),
+                ('item', 'a', 'append song to queue recursively'),
+                ('item', ';', 'locate selected song in queue'),
+                ('blank', None, None),
 
-                ('group', 'Search', ''), 
-                ('hline', None, None), 
-                ('item', 'B', 'start a database search, syntax = <tag_name>:<tag_value>'), 
-                ('item', 'Enter', 'append to queue (if not existing yet) and play'), 
-                ('item', 'a', 'append to queue'), 
-                ('item', ';', 'locate selected song in queue'), 
-                ('blank', None, None), 
+                ('group', 'Search', ''),
+                ('hline', None, None),
+                ('item', 'B', 'start a database search, syntax = <tag_name>:<tag_value>'),
+                ('item', 'Enter', 'append to queue (if not existing yet) and play'),
+                ('item', 'a', 'append to queue'),
+                ('item', ';', 'locate selected song in queue'),
+                ('blank', None, None),
 
-                ('group', 'Info', ''), 
-                ('hline', None, None), 
-                ('item', 'h', 'back to previous window'), 
-                ('blank', None, None), 
+                ('group', 'Info', ''),
+                ('hline', None, None),
+                ('item', 'h', 'back to previous window'),
+                ('blank', None, None),
                 ]
         self.num = len(self._options)
 
@@ -619,7 +619,7 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
 
     def udata(self):
         NCMPY_MOD.udata(self)
-        
+
         if self.main.c in self.main.allpsks:
             return
 
@@ -720,7 +720,7 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
         # set q_sel in shared memory (INFO mod will use)
         if self.num > 0:
             self.board['q_sel'] = self._queue[self.sel]
-            
+
 
     def round_two(self):
         uri = self.board.get('locate')
@@ -774,8 +774,8 @@ class NCMPY_DATABASE(NCMPY_MOD, NCMPY_SCROLL):
 
     def _build_view(self, keeppos=False):
         '''Build view using self._dir.
-        
-        A view is rebuilt when self._dir changes (ex. database update), 
+
+        A view is rebuilt when self._dir changes (ex. database update),
         or new items are added/removed (ex. playlist add/delete).'''
 
         view = self.mpc.lsinfo(self._dir)
@@ -791,7 +791,7 @@ class NCMPY_DATABASE(NCMPY_MOD, NCMPY_SCROLL):
 
     def udata(self):
         NCMPY_MOD.udata(self)
-        
+
         if self.board.get('main-database') == 'updated':
             self._dir = ''
             self._view = self._build_view()
@@ -897,8 +897,8 @@ class NCMPY_DATABASE(NCMPY_MOD, NCMPY_SCROLL):
         self.board['d_sel'] = self._view[self.sel].get('file')
 
     def round_two(self):
-        # if there's a path request, rebuild view, using 
-        # dirname(path) as display root, and search for the 
+        # if there's a path request, rebuild view, using
+        # dirname(path) as display root, and search for the
         # requested song.
         uri = self.board.get('path')
         if uri:
@@ -953,7 +953,7 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
         NCMPY_SCROLL.__init__(self)
         threading.Thread.__init__(self, name='lyrics')
 
-        # directory to save lyrics. 
+        # directory to save lyrics.
         # Make sure have write permission.
         self._lyrics_dir = conf['LYRICS_DIR']
 
@@ -981,10 +981,10 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
 
         # osd engine
         if conf['ENABLE_OSD']:
-            self._osd = pyosd.osd(font='-misc-droid sans mono-medium-r-normal--0-0-0-0-m-0-iso8859-1', 
-                    colour='#FFFF00', 
-                    align=pyosd.ALIGN_CENTER, 
-                    pos=pyosd.POS_TOP, 
+            self._osd = pyosd.osd(font='-misc-droid sans mono-medium-r-normal--0-0-0-0-m-0-iso8859-1',
+                    colour='#FFFF00',
+                    align=pyosd.ALIGN_CENTER,
+                    pos=pyosd.POS_TOP,
                     timeout=-1)
             # remembered for osd
             self._osdcur = -1
@@ -1138,7 +1138,7 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
 
 class NCMPY_INFO(NCMPY_MOD, NCMPY_SCROLL):
     '''Information about songs:
-    
+
         currently playing
         currently selected in queue
         currently selected in database'''
@@ -1156,52 +1156,52 @@ class NCMPY_INFO(NCMPY_MOD, NCMPY_SCROLL):
         # database.sel's uri cache
         self._dburi = None
         self._options = [
-                ('group', 'Currently Playing', None), 
-                ('hline', None, None), 
-                ('item', 'Title', ''), 
-                ('item', 'Artist', ''), 
-                ('item', 'Album', ''), 
-                ('item', 'Track', ''), 
-                ('item', 'Genre', ''), 
-                ('item', 'Date', ''), 
-                ('item', 'Time', ''), 
-                ('item', 'File', ''), 
-                ('blank', None, None), 
+                ('group', 'Currently Playing', None),
+                ('hline', None, None),
+                ('item', 'Title', ''),
+                ('item', 'Artist', ''),
+                ('item', 'Album', ''),
+                ('item', 'Track', ''),
+                ('item', 'Genre', ''),
+                ('item', 'Date', ''),
+                ('item', 'Time', ''),
+                ('item', 'File', ''),
+                ('blank', None, None),
 
-                ('group', 'Currently Selected in Queue', None), 
-                ('hline', None, None), 
-                ('item', 'Title', ''), 
-                ('item', 'Artist', ''), 
-                ('item', 'Album', ''), 
-                ('item', 'Track', ''), 
-                ('item', 'Genre', ''), 
-                ('item', 'Date', ''), 
-                ('item', 'Time', ''), 
-                ('item', 'File', ''), 
-                ('blank', None, None), 
+                ('group', 'Currently Selected in Queue', None),
+                ('hline', None, None),
+                ('item', 'Title', ''),
+                ('item', 'Artist', ''),
+                ('item', 'Album', ''),
+                ('item', 'Track', ''),
+                ('item', 'Genre', ''),
+                ('item', 'Date', ''),
+                ('item', 'Time', ''),
+                ('item', 'File', ''),
+                ('blank', None, None),
 
-                ('group', 'Currently Selected in Database', None), 
-                ('hline', None, None), 
-                ('item', 'Title', ''), 
-                ('item', 'Artist', ''), 
-                ('item', 'Album', ''), 
-                ('item', 'Track', ''), 
-                ('item', 'Genre', ''), 
-                ('item', 'Date', ''), 
-                ('item', 'Time', ''), 
-                ('item', 'File', ''), 
-                ('blank', None, None), 
+                ('group', 'Currently Selected in Database', None),
+                ('hline', None, None),
+                ('item', 'Title', ''),
+                ('item', 'Artist', ''),
+                ('item', 'Album', ''),
+                ('item', 'Track', ''),
+                ('item', 'Genre', ''),
+                ('item', 'Date', ''),
+                ('item', 'Time', ''),
+                ('item', 'File', ''),
+                ('blank', None, None),
 
-                ('group', 'MPD Statistics', None), 
-                ('hline', None, None), 
-                ('item', 'NumberofSongs', ''), 
-                ('item', 'NumberofArtists', ''), 
-                ('item', 'NumberofAlbums', ''), 
-                ('item', 'Uptime', ''), 
-                ('item', 'Playtime', ''), 
-                ('item', 'DBPlaytime', ''), 
-                ('item', 'DBUpdateTime', ''), 
-                ('blank', None, None), 
+                ('group', 'MPD Statistics', None),
+                ('hline', None, None),
+                ('item', 'NumberofSongs', ''),
+                ('item', 'NumberofArtists', ''),
+                ('item', 'NumberofAlbums', ''),
+                ('item', 'Uptime', ''),
+                ('item', 'Playtime', ''),
+                ('item', 'DBPlaytime', ''),
+                ('item', 'DBUpdateTime', ''),
+                ('blank', None, None),
                 ]
         self._options_d = None
         self._song_key_list = ['Title', 'Artist', 'Album', 'Track', 'Genre', 'Date', 'Time', 'File']
@@ -1311,7 +1311,7 @@ class NCMPY_ARTIST_ALBUM(NCMPY_MOD, NCMPY_SCROLL):
 
     def _build_view(self):
         '''Build view using self._type, self._artist and self._album.
-        
+
         A view is rebuilt when self._type changes.'''
 
         if self._type == 'artist':
@@ -1447,7 +1447,7 @@ class NCMPY_SEARCH(NCMPY_MOD, NCMPY_SCROLL):
 
     def _build_view(self, kw):
         '''Build view using search keywords.'''
-        
+
         try:
             name, value = kw.split(':', 1)
             view = self.mpc.find(name, value) or []
@@ -1562,10 +1562,10 @@ class NCMPY():
 
         # no sync keys
         self.nsks = [
-                ord('j'), ord('k'), ord('f'), ord('b'), 
-                ord('H'), ord('M'), ord('L'), ord('g'), ord('G'), 
-                curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, 
-                '/', '?', 'n', 'N', 
+                ord('j'), ord('k'), ord('f'), ord('b'),
+                ord('H'), ord('M'), ord('L'), ord('g'), ord('G'),
+                curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4,
+                '/', '?', 'n', 'N',
                 -1
                 ]
         # partial sync keys
@@ -1602,29 +1602,29 @@ class NCMPY():
 
         # module dict
         self.mdict = {
-                'Menu' : self.m, 
-                'Title' : self.t, 
-                'Progress' : self.p, 
-                'Status' : self.s, 
-                'Message' : self.e, 
-                'Help' : self.h, 
-                'Queue' : self.q, 
-                'Database' : self.d, 
-                'Lyrics' : self.l, 
-                'Artist-Album' : self.a, 
-                'Search' : self.r, 
-                'Info' : self.i, 
+                'Menu' : self.m,
+                'Title' : self.t,
+                'Progress' : self.p,
+                'Status' : self.s,
+                'Message' : self.e,
+                'Help' : self.h,
+                'Queue' : self.q,
+                'Database' : self.d,
+                'Lyrics' : self.l,
+                'Artist-Album' : self.a,
+                'Search' : self.r,
+                'Info' : self.i,
                 }
         # module list
         self.mlist = self.mdict.values()
 
         # bar module dict
         self.bmdict = {
-                'Menu' : self.m, 
-                'Title' : self.t, 
-                'Progress' : self.p, 
-                'Status' : self.s, 
-                'Message' : self.e, 
+                'Menu' : self.m,
+                'Title' : self.t,
+                'Progress' : self.p,
+                'Status' : self.s,
+                'Message' : self.e,
                 }
         # bar module list
         self.bmlist = self.bmdict.values()
@@ -1754,8 +1754,8 @@ class NCMPY():
                 self.mdict[modname].round_one(-1)
 
         # window switch
-        # Must be placed AFTER keyevent is dispatched to tmod, 
-        # since it happens in OLD tmod. 
+        # Must be placed AFTER keyevent is dispatched to tmod,
+        # since it happens in OLD tmod.
         if c in (curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, curses.KEY_F5, curses.KEY_F6):
             if c == curses.KEY_F1:
                 self.tmodname = 'Help'
@@ -1800,7 +1800,7 @@ class NCMPY():
 
     def enter_idle(self):
         '''Enter idle state. Must be called outside idle state.
-        
+
         No return value.'''
 
         self.mpc.send_idle()
@@ -1808,7 +1808,7 @@ class NCMPY():
 
     def leave_idle(self):
         '''Leave idle state. Must be called inside idle state.
-        
+
         Return Value: Events received in idle state.'''
 
         self.mpc.send_noidle()
@@ -1830,7 +1830,7 @@ class NCMPY():
 
     def process(self, fd):
         '''Process init/timeout/mpd/stdin events. Called in main loop.'''
-        
+
         tmod = self.mdict[self.tmodname]
         self.allnsks, self.allpsks = copy.deepcopy(self.nsks), copy.deepcopy(self.psks)
         self.allnsks.extend(tmod.nsks)
@@ -1892,7 +1892,7 @@ class NCMPY():
 
     def rdis(self):
         '''Reset display.
-        
+
         Called when SIGWINCH is caught.'''
 
         curses.endwin()
