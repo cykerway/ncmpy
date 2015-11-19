@@ -152,7 +152,8 @@ class NCMPY_MOD():
                     }[c]
             has_match = False
 
-            for i in [k % len(items) for k in range(self.sel + di, self.sel + di + di * len(items), di)]:
+            for i in [k % len(items) \
+                    for k in range(self.sel + di, self.sel + di + di * len(items), di)]:
                 item = items[i]
 
                 if modname in ['Queue', 'Search']:
@@ -360,7 +361,8 @@ class NCMPY_STATUS(NCMPY_MOD):
         tm = self.status.get('time') or '0:0'
         elapsed, total = tm.split(':')
         elapsed, total = int(elapsed), int(total)
-        elapsed_mm, elapsed_ss, total_mm, total_ss = elapsed / 60, elapsed % 60, total / 60, total % 60
+        elapsed_mm, elapsed_ss, total_mm, total_ss = \
+                elapsed / 60, elapsed % 60, total / 60, total % 60
         return '[{0}:{1:02d} ~ {2}:{3:02d}]'.format(elapsed_mm, elapsed_ss, total_mm, total_ss)
 
     def uwin(self):
@@ -499,7 +501,7 @@ class NCMPY_HELP(NCMPY_MOD, NCMPY_SCROLL):
 
                 ('group', 'Database', ''),
                 ('hline', None, None),
-                ('item', 'Enter', 'open directory / append to queue (if not existing yet) and play / load playlist'),
+                ('item', 'Enter', 'open directory / music / playlist'),
                 ('item', '\'', 'go to parent directory'),
                 ('item', '"', 'go to root directory'),
                 ('item', 'a', 'append song to queue recursively'),
@@ -601,7 +603,8 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
             for song in self._queue:
                 if c.enable_rating:
                     try:
-                        rating = int(self.mpc.sticker_get('song', song['file'], 'rating').split('=',1)[1])
+                        rating = int(self.mpc.sticker_get(\
+                                'song', song['file'], 'rating').split('=',1)[1])
                     except mpd.CommandError:
                         rating = 0
                     finally:
@@ -652,7 +655,8 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
         elif c == ord('J'):
             if self.sel + 1 < self.num:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel + 1))
-                self._queue[self.sel], self._queue[self.sel + 1] = self._queue[self.sel + 1], self._queue[self.sel]
+                self._queue[self.sel], self._queue[self.sel + 1] = \
+                        self._queue[self.sel + 1], self._queue[self.sel]
                 if self.cur == self.sel:
                     self.cur += 1
                 elif self.cur == self.sel + 1:
@@ -661,7 +665,8 @@ class NCMPY_QUEUE(NCMPY_MOD, NCMPY_SCROLL):
         elif c == ord('K'):
             if self.sel > 0:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel - 1))
-                self._queue[self.sel - 1], self._queue[self.sel] = self._queue[self.sel], self._queue[self.sel - 1]
+                self._queue[self.sel - 1], self._queue[self.sel] = \
+                        self._queue[self.sel], self._queue[self.sel - 1]
                 if self.cur == self.sel - 1:
                     self.cur += 1
                 elif self.cur == self.sel:
@@ -948,7 +953,8 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
 
         # osd engine
         if c.enable_osd:
-            self._osd = pyosd.osd(font='-misc-droid sans mono-medium-r-normal--0-0-0-0-m-0-iso8859-1',
+            self._osd = pyosd.osd(\
+                    font='-misc-droid sans mono-medium-r-normal--0-0-0-0-m-0-iso8859-1',
                     colour='#FFFF00',
                     align=pyosd.ALIGN_CENTER,
                     pos=pyosd.POS_TOP,
@@ -981,7 +987,8 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
 
     def _save_lyrics(self):
         if self._artist and self._title and self._cv.acquire(blocking=False):
-            with open(os.path.join(self._lyrics_dir, self._artist.replace('/', '_') + '-' + self._title.replace('/', '_') + '.lrc'), 'wt') as f:
+            with open(os.path.join(self._lyrics_dir, self._artist.replace('/', '_') + \
+                    '-' + self._title.replace('/', '_') + '.lrc'), 'wt') as f:
                 f.write(self._lyrics)
             self.board['msg'] = 'Lyrics {}-{}.lrc saved.'.format(self._artist, self._title)
             self._lyrics_state = 'saved'
@@ -1087,7 +1094,8 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
             # fetch lyrics if required information is provided
             if self._artist and self._title:
                 # try to fetch from local lrc
-                lyrics_file = os.path.join(self._lyrics_dir, self._artist.replace('/', '_') + '-' + self._title.replace('/', '_') + '.lrc')
+                lyrics_file = os.path.join(self._lyrics_dir, self._artist.replace('/', '_') + \
+                        '-' + self._title.replace('/', '_') + '.lrc')
                 if os.path.isfile(lyrics_file):
                     with open(lyrics_file, 'rt') as f:
                         self._lyrics = f.read()
@@ -1095,7 +1103,8 @@ class NCMPY_LYRICS(NCMPY_MOD, NCMPY_SCROLL, threading.Thread):
                     self._lyrics_state = 'local'
                 # if local lrc doesn't exist, fetch from Internet
                 else:
-                    self._lyrics = ttplyrics.fetch_lyrics(self._transtag(self._artist), self._transtag(self._title))
+                    self._lyrics = ttplyrics.fetch_lyrics(self._transtag(self._artist), \
+                            self._transtag(self._title))
                     # inform round_two: lyrics has been fetched
                     self._lyrics_state = 'net'
             self._osong = self._nsong
@@ -1172,7 +1181,8 @@ class NCMPY_INFO(NCMPY_MOD, NCMPY_SCROLL):
                 ]
         self._options_d = None
         self._song_key_list = ['Title', 'Artist', 'Album', 'Track', 'Genre', 'Date', 'Time', 'File']
-        self._stats_key_list = ['Songs', 'Artists', 'Albums', 'Uptime', 'Playtime', 'DB_Playtime', 'DB_Update']
+        self._stats_key_list = [\
+                'Songs', 'Artists', 'Albums', 'Uptime', 'Playtime', 'DB_Playtime', 'DB_Update']
 
     def round_one(self, c):
         if c == ord('j'):
@@ -1220,14 +1230,17 @@ class NCMPY_INFO(NCMPY_MOD, NCMPY_SCROLL):
         # convert list (multi-tags)  to str
         for l in (cp_list, siq_list, sid_list):
             for i in range(6):
-                l[i] = (l[i][0], l[i][1], isinstance(l[i][2], str) and l[i][2] or ', '.join(l[i][2]))
+                l[i] = (l[i][0], l[i][1], \
+                        isinstance(l[i][2], str) and l[i][2] or ', '.join(l[i][2]))
 
         # format time
         for l in (cp_list, siq_list, sid_list):
             l[6] = (l[6][0], l[6][1], self._format_time(l[6][2]))
         for i in range(3, 6):
-            stats_list[i] = (stats_list[i][0], stats_list[i][1], self._format_time(stats_list[i][2]))
-        stats_list[6] = (stats_list[6][0], stats_list[6][1], time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(stats_list[6][2]))))
+            stats_list[i] = (stats_list[i][0], stats_list[i][1], \
+                    self._format_time(stats_list[i][2]))
+        stats_list[6] = (stats_list[6][0], stats_list[6][1], \
+                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(stats_list[6][2]))))
 
         # merge into main list
         self._options[2:10] = cp_list
@@ -1723,7 +1736,8 @@ class NCMPY():
         # window switch
         # Must be placed AFTER keyevent is dispatched to tmod,
         # since it happens in OLD tmod.
-        if c in (curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4, curses.KEY_F5, curses.KEY_F6):
+        if c in (curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, \
+                curses.KEY_F4, curses.KEY_F5, curses.KEY_F6):
             if c == curses.KEY_F1:
                 self.tmodname = 'Help'
             elif c == curses.KEY_F2:
