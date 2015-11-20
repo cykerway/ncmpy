@@ -227,7 +227,7 @@ class CursedPane(BlockPane):
         BlockPane.block_resize_win(self)
         self.sel = min(self.sel, self.beg + self.height - 1)
 
-    def _search(self, panename, c):
+    def search(self, panename, c):
         '''Search in panes.'''
 
         if panename == 'Queue':
@@ -686,7 +686,7 @@ class QueuePane(CursedPane):
                 self.mpc.sticker_set('song', song['file'], 'rating', rating)
                 song['rating'] = rating
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self._search('Queue', c)
+            self.search('Queue', c)
         elif c == ord('\''):
             self.auto_center = not self.auto_center
         elif c == ord(';'):
@@ -856,7 +856,7 @@ class DatabasePane(CursedPane):
         elif c == ord('U'):
             self.mpc.update()
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self._search('Database', c)
+            self.search('Database', c)
         elif c == ord(';'):
             # tell QUEUE we want to locate a song
             item = self.items[self.sel]
@@ -1353,7 +1353,7 @@ class ArtistAlbumPane(CursedPane):
             elif self._type == 'song':
                 self.mpc.add(item['file'])
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self._search('Artist-Album', c)
+            self.search('Artist-Album', c)
         elif c == ord(';'):
             # tell QUEUE we want to locate a song
             if self._type == 'song':
@@ -1453,7 +1453,7 @@ class SearchPane(CursedPane):
             item = self._view[self.sel]
             self.mpc.add(item['file'])
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self._search('Search', c)
+            self.search('Search', c)
         elif c == ord(';'):
             # tell QUEUE we want to locate a song
             if self.sel < self.num:
@@ -1475,6 +1475,62 @@ class SearchPane(CursedPane):
             self.win.insstr(i - self.beg, 0, val)
             if i == self.sel:
                 self.win.attroff(curses.A_REVERSE)
+        self.win.noutrefresh()
+
+class OutputPane(CursedPane):
+    '''Output pane.'''
+
+    def __init__(self, win, main):
+        CursedPane.__init__(self, win, main)
+        self.outputs = []
+
+    def update_data(self):
+        Pane.update_data(self)
+
+        self.outputs = self.mpc.outputs()
+        self.num = len(self.outputs)
+        self.beg = self.clamp(self.beg)
+        self.sel = self.clamp(self.sel)
+
+    def round1(self, c):
+        if c == ord('j'):
+            self.line_down()
+        elif c == ord('k'):
+            self.line_up()
+        elif c == ord('f'):
+            self.page_down()
+        elif c == ord('b'):
+            self.page_up()
+        elif c == ord('t'):
+            output = self.outputs[self.sel]
+            output_id = int(output['outputid'])
+            output_enabled = int(output['outputenabled'])
+            if output_enabled:
+                self.mpc.disableoutput(output_id)
+                self.outputs[self.sel]['outputenabled'] = '0'
+            else:
+                self.mpc.enableoutput(output_id)
+                self.outputs[self.sel]['outputenabled'] = '1'
+
+    def update_win(self):
+        self.win.erase()
+
+        for i in range(self.beg, min(self.beg + self.height, self.num)):
+            item = self.outputs[i]
+
+            if i == self.sel:
+                self.win.attron(curses.A_REVERSE)
+
+            enabled_str = '[{}]'.format('o' if int(item['outputenabled']) else 'x')
+            name_str = item['outputname']
+            item_str = '{} {}'.format(enabled_str, name_str)
+
+            self.win.hline(i - self.beg, 0, ' ', self.width)
+            self.win.insstr(i - self.beg, 0, item_str)
+
+            if i == self.sel:
+                self.win.attroff(curses.A_REVERSE)
+
         self.win.noutrefresh()
 
 class Ncmpy():
@@ -1554,6 +1610,7 @@ class Ncmpy():
         self.a = ArtistAlbumPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
         self.r = SearchPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
         self.i = InfoPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.o = OutputPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
 
         # Pane dict.
         self.pdict = {
@@ -1570,6 +1627,7 @@ class Ncmpy():
                 'Artist-Album' : self.a,
                 'Search' : self.r,
                 'Info' : self.i,
+                'Output' : self.o,
                 }
         # Pane list.
         self.plist = self.pdict.values()
@@ -1733,6 +1791,9 @@ class Ncmpy():
             self.prevtpanename = self.tpanename
             self.tpanename = 'Info'
         elif c == curses.KEY_F8:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Output'
+        elif c == curses.KEY_F9:
             if self.prevtpanename:
                 self.tpanename, self.prevtpanename = self.prevtpanename, self.tpanename
 
