@@ -87,54 +87,6 @@ class Pane():
 
         pass
 
-    def clamp(self, n):
-        '''Clamp value into range [0, num).'''
-
-        return min(max(n, 0), self.num - 1)
-
-    def _search(self, panename, c):
-        '''Search in panes.'''
-
-        if panename == 'Queue':
-            items = self.queue
-        elif panename in ['Database', 'Artist-Album', 'Search']:
-            items = self._view
-
-        if self.main.search and self.main.search_di:
-            di = {
-                    ord('/') : 1,
-                    ord('?') : -1,
-                    ord('n') : self.main.search_di,
-                    ord('N') : -self.main.search_di
-                    }[c]
-            has_match = False
-
-            for i in [k % len(items) \
-                    for k in range(self.sel + di, self.sel + di + di * len(items), di)]:
-                item = items[i]
-
-                if panename in ['Queue', 'Search']:
-                    title = get_tag('title', item) or os.path.basename(item['file'])
-                elif panename == 'Database':
-                    title = item.values()[0]
-                elif panename == 'Artist-Album':
-                    if self._type in ['artist', 'album']:
-                        title = item
-                    elif self._type == 'song':
-                        title = get_tag('title', item) or os.path.basename(item['file'])
-
-                if title.find(self.main.search) != -1:
-                    has_match = True
-                    if di == 1 and i <= self.sel:
-                        self.board['msg'] = 'search hit BOTTOM, continuing at TOP'
-                    elif di == -1 and i >= self.sel:
-                        self.board['msg'] = 'search hit TOP, continuing at BOTTOM'
-                    self.locate(i)
-                    break
-
-            if not has_match:
-                self.board['msg'] = 'Pattern not found: {}'.format(self.main.search)
-
 class BarPane(Pane):
     '''Bar pane.'''
 
@@ -266,9 +218,57 @@ class CursedPane(BlockPane):
             self.beg = 0
         self.sel = pos
 
+    def clamp(self, n):
+        '''Clamp value into range [0, num).'''
+
+        return min(max(n, 0), self.num - 1)
+
     def block_resize_win(self):
         BlockPane.block_resize_win(self)
         self.sel = min(self.sel, self.beg + self.height - 1)
+
+    def _search(self, panename, c):
+        '''Search in panes.'''
+
+        if panename == 'Queue':
+            items = self.queue
+        elif panename in ['Database', 'Artist-Album', 'Search']:
+            items = self._view
+
+        if self.main.search and self.main.search_di:
+            di = {
+                    ord('/') : 1,
+                    ord('?') : -1,
+                    ord('n') : self.main.search_di,
+                    ord('N') : -self.main.search_di
+                    }[c]
+            has_match = False
+
+            for i in [k % len(items) \
+                    for k in range(self.sel + di, self.sel + di + di * len(items), di)]:
+                item = items[i]
+
+                if panename in ['Queue', 'Search']:
+                    title = get_tag('title', item) or os.path.basename(item['file'])
+                elif panename == 'Database':
+                    title = item.values()[0]
+                elif panename == 'Artist-Album':
+                    if self._type in ['artist', 'album']:
+                        title = item
+                    elif self._type == 'song':
+                        title = get_tag('title', item) or os.path.basename(item['file'])
+
+                if title.find(self.main.search) != -1:
+                    has_match = True
+                    if di == 1 and i <= self.sel:
+                        self.board['msg'] = 'search hit BOTTOM, continuing at TOP'
+                    elif di == -1 and i >= self.sel:
+                        self.board['msg'] = 'search hit TOP, continuing at BOTTOM'
+                    self.locate(i)
+                    break
+
+            if not has_match:
+                self.board['msg'] = 'Pattern not found: {}'.format(self.main.search)
 
 class MenuPane(BarPane):
     '''Display pane name, play mode and volume.'''
