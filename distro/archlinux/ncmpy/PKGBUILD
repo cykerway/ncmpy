@@ -10,7 +10,8 @@ url="http://www.cykerway.com/projects/ncmpy"
 license=('GPL3')
 depends=('python2' 'python2-mpd')
 conflicts=('ncmpy-git')
-source=("$pkgname-$pkgver.tar.gz")
+source=("https://github.com/cykerway/ncmpy/archive/v1.1.tar.gz")
+sha256sums=('058a7ca08edb5d7f675b00e1ef23c2aab4fa1d04ccb426a00fc71b9324c835bb')
 
 package() {
   cd "$srcdir/$pkgname-$pkgver"
@@ -25,8 +26,8 @@ package() {
     "$pkgdir/usr/share/ncmpy/INSTALL"
 
   install -Dm644 \
-    "$srcdir/$pkgname-$pkgver/README" \
-    "$pkgdir/usr/share/ncmpy/README"
+    "$srcdir/$pkgname-$pkgver/README.md" \
+    "$pkgdir/usr/share/ncmpy/README.md"
 
   install -Dm644 \
     "$srcdir/$pkgname-$pkgver/share/ncmpy.conf.example" \
