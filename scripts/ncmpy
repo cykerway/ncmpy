@@ -366,9 +366,10 @@ class Ncmpy():
             c = self.c = -1
             self.sync = True
 
+        self.board.clear()
+
         if self.sync:
             events = self.try_leave_idle()
-            self.board.clear()
 
             if events and 'database' in events:
                 self.board['database-updated'] = None
