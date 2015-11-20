@@ -8,4 +8,4 @@ ENABLE_RATING=yes
 
 # Lyrics dir.
 # Use ~ for user's home directory
-LYRICS_DIR=~/.config/ncmpy/lyrics
+LYRICS_DIR=~/.ncmpy/lyrics
