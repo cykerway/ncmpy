@@ -1,4 +1,5 @@
-# Maintainer: Cyker Way <cykerway at gmail dot com>
+# Contributor: Cyker Way <cykerway at gmail dot com>
+# Maintainer:  Cyker Way <cykerway at gmail dot com>
 
 pkgname=ncmpy
 pkgver=1.1
@@ -7,7 +8,7 @@ pkgdesc="A curses-based MPD client written in Python."
 arch=('i686' 'x86_64')
 url="http://www.cykerway.com/projects/ncmpy"
 license=('GPL3')
-depends=('python2' 'python2-mpd' 'python-lxml')
+depends=('python2' 'python2-mpd')
 conflicts=('ncmpy-git')
 source=("$pkgname-$pkgver.tar.gz")
 
