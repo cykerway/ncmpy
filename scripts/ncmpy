@@ -1791,14 +1791,15 @@ class Ncmpy():
             self.prevtpanename = self.tpanename
             self.tpanename = 'Search'
         elif c == curses.KEY_F7:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Info'
+            if self.tpanename == 'Info':
+                if self.prevtpanename:
+                    self.tpanename, self.prevtpanename = self.prevtpanename, self.tpanename
+            else:
+                self.prevtpanename = self.tpanename
+                self.tpanename = 'Info'
         elif c == curses.KEY_F8:
             self.prevtpanename = self.tpanename
             self.tpanename = 'Output'
-        elif c == curses.KEY_F9:
-            if self.prevtpanename:
-                self.tpanename, self.prevtpanename = self.prevtpanename, self.tpanename
 
     def round2(self):
         if self.board.has_key('path'):
