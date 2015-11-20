@@ -67,7 +67,6 @@ class Ncmpy():
         self.search = ''
         self.search_di = 0
         self.pending = []
-        self.timestamp = time.time()
 
         # No sync keys. These keys don't modify MPD server state and can be handled locally.
         # Therefore we don't sync with MPD server when handling these keys.
@@ -152,7 +151,7 @@ class Ncmpy():
         self.l.start()
 
         # initial update
-        self.process('init')
+        self.process('timeout')
 
         return self
 
@@ -347,7 +346,7 @@ class Ncmpy():
             return self.leave_idle()
 
     def process(self, fd):
-        '''Process init/timeout/mpd/stdin events. Called in main loop.'''
+        '''Process timeout/mpd/stdin events. Called in main loop.'''
 
         # Get input if event is 'stdin'.
         if fd == 'stdin':
@@ -411,7 +410,6 @@ class Ncmpy():
             try:
                 responses = poll.poll(200)
                 if not responses:
-                    self.timestamp = time.time()
                     self.process('timeout')
                 else:
                     for fd, event in responses:
