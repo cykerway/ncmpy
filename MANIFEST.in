@@ -1,1 +1,1 @@
-include share/ncmpy.conf.example
+include INSTALL LICENSE README share/ncmpy.conf.example

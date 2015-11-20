@@ -10,12 +10,12 @@ setup(
     author_email = 'cykerway@gmail.com',
     license = 'GPL3',
     url = 'http://www.cykerway.com/projects/ncmpy',
-    description = 'A Curses-based MPD client written in Python',
+    description = 'A curses-based MPD client written in Python',
     long_description = '''
-        ncmpy - a Curses-based MPD client written in Python
+        ncmpy - a curses-based MPD client written in Python
         ============================
 
-        ncmpy is a Curses-based MPD client. Features:
+        ncmpy is a curses-based MPD client. Features:
 
             Playback control.
             Queue control.
