@@ -485,7 +485,7 @@ class HelpPane(ScrollPane):
 
                 ('group', 'Database', ''),
                 ('hline', None, None),
-                ('item', 'Enter', 'open directory / music / playlist'),
+                ('item', 'Enter', 'open directory / song / playlist'),
                 ('item', '\'', 'go to parent directory'),
                 ('item', '"', 'go to root directory'),
                 ('item', 'a', 'append song to queue recursively'),
