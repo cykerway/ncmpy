@@ -1,7 +1,3 @@
 *.swp
-*.lrc
 *.pyc
-MANIFEST
-build/
-dist/
 /run.sh
