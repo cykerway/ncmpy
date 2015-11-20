@@ -38,20 +38,20 @@ import urllib
 from ncmpy.config import Config
 from ncmpy import lrc, ttplyrics
 
+from ncmpy.util import *
+
 # global configuration
 c = Config()
 
-class NcmpyMod():
-    '''Base class of all mods'''
+class Pane():
+    '''Base class of all panes.'''
 
     def __init__(self, win, main):
         '''
-        Initialize a mod.
+        Initialize a pane.
 
-        Parameters:
-
-            win - A curses.window instance.
-            main - A Ncmpy instance.
+        win - A curses.window instance.
+        main - A Ncmpy instance.
         '''
 
         self.win = win
@@ -60,10 +60,7 @@ class NcmpyMod():
         self.board = main.board
         self.height, self.width = self.win.getmaxyx()
 
-        self.nsks = []
-        self.psks = []
-
-    def updated(self):
+    def update_data(self):
         '''Update data.'''
 
         self.status = self.main.status
@@ -80,62 +77,27 @@ class NcmpyMod():
 
         pass
 
-    def updatew(self):
+    def update_win(self):
         '''Update window.'''
 
         pass
 
-    def _bar_resizew(self, y, x):
-        '''Resize bar window.'''
-
-        self.win.resize(1, self.main.width)
-        self.height, self.width = self.win.getmaxyx()
-        self.win.mvwin(y, x)
-
-    def _block_resizew(self):
-        '''Resize block window.'''
-
-        self.win.resize(self.main.height - 4, self.main.width)
-        self.height, self.width = self.win.getmaxyx()
-        self.win.mvwin(2, 0)
-
-        self.sel = min(self.sel, self.beg + self.height - 1)
-
-    def resizew(self):
-        '''Resize window using _bar_resizew/_block_resizew.'''
+    def resize_win(self):
+        '''Resize window.'''
 
         pass
 
-    def _format_time(self, tm):
-        '''Convert time: <seconds> -> <hh:mm:ss>.'''
-
-        if tm.isdigit():
-            tm = int(tm)
-            h, m, s = tm // 3600, (tm // 60) % 60, tm % 60
-            return '{}:'.format(h) * bool(h > 0) + '{:02d}:{:02d}'.format(m, s)
-        else:
-            return ''
-
-    def _get_tag(self, tagname, item):
-        tag = item.get(tagname)
-        if isinstance(tag, str):
-            return tag
-        elif isinstance(tag, list):
-            return ', '.join(tag)
-        else:
-            return None
-
-    def _clamp(self, n):
-        '''Constrain value in range [0, num).'''
+    def clamp(self, n):
+        '''Clamp value into range [0, num).'''
 
         return min(max(n, 0), self.num - 1)
 
-    def _search(self, modname, c):
-        '''Search in mods.'''
+    def _search(self, panename, c):
+        '''Search in panes.'''
 
-        if modname == 'Queue':
-            items = self._queue
-        elif modname in ['Database', 'Artist-Album', 'Search']:
+        if panename == 'Queue':
+            items = self.queue
+        elif panename in ['Database', 'Artist-Album', 'Search']:
             items = self._view
 
         if self.main.search and self.main.search_di:
@@ -151,15 +113,15 @@ class NcmpyMod():
                     for k in range(self.sel + di, self.sel + di + di * len(items), di)]:
                 item = items[i]
 
-                if modname in ['Queue', 'Search']:
-                    title = self._get_tag('title', item) or os.path.basename(item['file'])
-                elif modname == 'Database':
+                if panename in ['Queue', 'Search']:
+                    title = get_tag('title', item) or os.path.basename(item['file'])
+                elif panename == 'Database':
                     title = item.values()[0]
-                elif modname == 'Artist-Album':
+                elif panename == 'Artist-Album':
                     if self._type in ['artist', 'album']:
                         title = item
                     elif self._type == 'song':
-                        title = self._get_tag('title', item) or os.path.basename(item['file'])
+                        title = get_tag('title', item) or os.path.basename(item['file'])
 
                 if title.find(self.main.search) != -1:
                     has_match = True
@@ -173,19 +135,81 @@ class NcmpyMod():
             if not has_match:
                 self.board['msg'] = 'Pattern not found: {}'.format(self.main.search)
 
-class NcmpyScroll():
-    '''Scrolling interface.
+class BarPane(Pane):
+    '''Bar pane.'''
 
-    'ns_' means no selection'''
+    def __init__(self, win, main):
+        Pane.__init__(self, win, main)
 
-    def __init__(self):
-        # Number of items in total.
+    def bar_resize_win(self, y, x):
+        '''Resize bar window.'''
+
+        self.win.resize(1, self.main.width)
+        self.height, self.width = self.win.getmaxyx()
+        self.win.mvwin(y, x)
+
+class BlockPane(Pane):
+    '''Block pane.'''
+
+    def __init__(self, win, main):
+        Pane.__init__(self, win, main)
+
+    def block_resize_win(self):
+        '''Resize block window.'''
+
+        self.win.resize(self.main.height - 4, self.main.width)
+        self.height, self.width = self.win.getmaxyx()
+        self.win.mvwin(2, 0)
+
+    def resize_win(self):
+        self.block_resize_win()
+
+class ScrollPane(BlockPane):
+    '''Scroll pane.'''
+
+    def __init__(self, win, main):
+        BlockPane.__init__(self, win, main)
+
+        # Number of lines in total.
         self.num = 0
-        # Beginning item.
+        # Beginning line.
         self.beg = 0
-        # Selected item.
+
+    def line_down(self):
+        if self.beg < self.num - self.height:
+            self.beg += 1
+
+    def line_up(self):
+        if self.beg > 0:
+            self.beg -= 1
+
+    def page_down(self):
+        self.beg = min(self.beg + self.height, self.num - self.height)
+
+    def page_up(self):
+        self.beg = max(self.beg - self.height, 0)
+
+    def locate(self, pos):
+        '''Select pos, and put in the center.'''
+
+        if pos >= self.height / 2:
+            self.beg = pos - self.height / 2
+        else:
+            self.beg = 0
+
+class CursedPane(BlockPane):
+    '''Pane with cursor.'''
+
+    def __init__(self, win, main):
+        BlockPane.__init__(self, win, main)
+
+        # Number of lines in total.
+        self.num = 0
+        # Beginning line.
+        self.beg = 0
+        # Selected line.
         self.sel = 0
-        # Current item.
+        # Current line.
         self.cur = 0
 
     def line_down(self):
@@ -216,20 +240,6 @@ class NcmpyScroll():
             self.sel -= self.height
             self.beg = max(self.beg - self.height, 0)
 
-    def ns_line_down(self):
-        if self.beg < self.num - self.height:
-            self.beg += 1
-
-    def ns_line_up(self):
-        if self.beg > 0:
-            self.beg -= 1
-
-    def ns_page_down(self):
-        self.beg = min(self.beg + self.height, self.num - self.height)
-
-    def ns_page_up(self):
-        self.beg = max(self.beg - self.height, 0)
-
     def select_top(self):
         self.sel = self.beg
 
@@ -256,65 +266,67 @@ class NcmpyScroll():
             self.beg = 0
         self.sel = pos
 
-class NcmpyMenu(NcmpyMod):
-    '''Display mod name, play mode and volume.'''
+    def block_resize_win(self):
+        BlockPane.block_resize_win(self)
+        self.sel = min(self.sel, self.beg + self.height - 1)
+
+class MenuPane(BarPane):
+    '''Display pane name, play mode and volume.'''
 
     BLANK = ' ' * 5
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
+        BarPane.__init__(self, win, main)
         self.win.attron(curses.A_BOLD)
 
-    def make_mode_str(self):
-        '''Make mode string.'''
-
-        return ('[con]' if int(self.status['consume']) else self.BLANK) + \
+    def build_menu_str(self):
+        title_str = self.main.tpanename
+        mode_str = ('[con]' if int(self.status['consume']) else self.BLANK) + \
                 ('[ran]' if int(self.status['random']) else self.BLANK) + \
                 ('[rep]' if int(self.status['repeat']) else self.BLANK) + \
                 ('[sin]' if int(self.status['single']) else self.BLANK)
-
-    def make_menu_str(self):
-        title_str = self.main.tmodname
-        mode_str = self.make_mode_str()
         vol_str = 'Volume: ' + self.status['volume'] + '%'
+
         state_str = '{}    {}'.format(mode_str, vol_str)
         title_len = self.width - len(state_str)
-        return title_str[:title_len].ljust(title_len) + state_str
+        menu_str = title_str.ljust(title_len) + state_str
 
-    def updatew(self):
-        menu_str = self.make_menu_str()
+        return menu_str
+
+    def update_win(self):
+        menu_str = self.build_menu_str()
 
         # Must use insstr instead of addstr, because addstr cannot draw the last character (will
-        # raise an exception). The same applies to other mods.
+        # raise an exception). The same applies to other panes.
         self.win.erase()
         self.win.insstr(0, 0, menu_str)
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._bar_resizew(0, 0)
+    def resize_win(self):
+        self.bar_resize_win(0, 0)
 
-class NcmpyLine(NcmpyMod):
+class LinePane(BarPane):
     '''Horizontal line.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
+        BarPane.__init__(self, win, main)
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         self.win.insstr(0, 0, self.width * '-')
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._bar_resizew(1, 0)
+    def resize_win(self):
+        self.bar_resize_win(1, 0)
 
-class NcmpyProgress(NcmpyMod):
+class ProgressPane(BarPane):
     '''Show playing progress.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
+        BarPane.__init__(self, win, main)
 
-    def make_prog_str(self):
-        '''Prepare prog_str.'''
+    def build_prog_str(self):
+        '''Build progress str.'''
 
         state = self.status.get('state')
         if state == 'stop':
@@ -325,66 +337,66 @@ class NcmpyProgress(NcmpyMod):
             pos = int((float(elapsed) / float(total)) * (self.width - 1))
             return '=' * pos + '0' + '-' * (self.width - pos - 1)
 
-    def updatew(self):
-        prog_str = self.make_prog_str()
+    def update_win(self):
+        prog_str = self.build_prog_str()
 
         self.win.erase()
         self.win.insstr(0, 0, prog_str)
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._bar_resizew(self.main.height - 2, 0)
+    def resize_win(self):
+        self.bar_resize_win(self.main.height - 2, 0)
 
-class NcmpyStatus(NcmpyMod):
+class StatusPane(BarPane):
     '''Show playing status, elapsed/total time.'''
 
+    state_name = {
+            'play' : 'Playing',
+            'stop' : 'Stopped',
+            'pause' : 'Paused',
+            }
+
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        self._state_name = {
-                'play' : 'Playing',
-                'stop' : 'Stopped',
-                'pause' : 'Paused',
-                }
+        BarPane.__init__(self, win, main)
         self.win.attron(curses.A_BOLD)
 
-    def make_title_str(self):
-        '''Prepare title_str.'''
+    def build_title_str(self):
+        '''Build title str.'''
 
         state = self.status.get('state')
         song = self.currentsong
         title = song and (song.get('title') or os.path.basename(song.get('file'))) or ''
-        return '{} > {}'.format(self._state_name[state], title)
+        return '{} > {}'.format(self.state_name[state], title)
 
-    def make_tm_str(self):
-        '''Prepare tm_str.'''
+    def build_tm_str(self):
+        '''Build tm str.'''
 
         tm = self.status.get('time') or '0:0'
-        elapsed, total = tm.split(':')
-        elapsed, total = int(elapsed), int(total)
+        elapsed, total = map(int, tm.split(':'))
         elapsed_mm, elapsed_ss, total_mm, total_ss = \
                 elapsed / 60, elapsed % 60, total / 60, total % 60
         return '[{0}:{1:02d} ~ {2}:{3:02d}]'.format(elapsed_mm, elapsed_ss, total_mm, total_ss)
 
-    def updatew(self):
+    def update_win(self):
         # Use two strs because it's difficult to calculate display length of unicode characters.
-        title_str = self.make_title_str()
-        tm_str = self.make_tm_str()
+        title_str = self.build_title_str()
+        tm_str = self.build_tm_str()
 
         self.win.erase()
         self.win.insstr(0, 0, title_str)
         self.win.insstr(0, self.width - len(tm_str), tm_str)
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._bar_resizew(self.main.height - 1, 0)
+    def resize_win(self):
+        self.bar_resize_win(self.main.height - 1, 0)
 
-class NcmpyMessage(NcmpyMod):
+class MessagePane(BarPane):
     '''Show message and get user input.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        self._msg = None
-        self._timeout = 0
+        BarPane.__init__(self, win, main)
+        self.msg = None
+        self.timeout = 0
 
     def getstr(self, prompt):
         '''Get user input with prompt <prompt>.'''
@@ -401,29 +413,28 @@ class NcmpyMessage(NcmpyMod):
         curses.cbreak()
         return s
 
-    def updatew(self):
+    def update_win(self):
         msg = self.board.get('msg')
         if msg:
-            self._msg = msg
-            self._timeout = 5
+            self.msg = msg
+            self.timeout = 5
 
         # TODO. Use a real timer.
-        if self._timeout > 0:
+        if self.timeout > 0:
             self.win.erase()
-            self.win.insstr(0, 0, self._msg, curses.A_BOLD)
+            self.win.insstr(0, 0, self.msg, curses.A_BOLD)
             self.win.noutrefresh()
-            self._timeout -= 1
+            self.timeout -= 1
 
-    def resizew(self):
-        self._bar_resizew(self.main.height - 1, 0)
+    def resize_win(self):
+        self.bar_resize_win(self.main.height - 1, 0)
 
-class NcmpyHelp(NcmpyMod, NcmpyScroll):
+class HelpPane(ScrollPane):
     '''Help.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        NcmpyScroll.__init__(self)
-        self._options = [
+        ScrollPane.__init__(self, win, main)
+        self.lines = [
                 ('group', 'Global', None),
                 ('hline', None, None),
                 ('item', 'F1', 'Help'),
@@ -539,22 +550,22 @@ class NcmpyHelp(NcmpyMod, NcmpyScroll):
                 ('item', 'h', 'back to previous window'),
                 ('blank', None, None),
                 ]
-        self.num = len(self._options)
+        self.num = len(self.lines)
 
     def round1(self, c):
         if c == ord('j'):
-            self.ns_line_down()
+            self.line_down()
         elif c == ord('k'):
-            self.ns_line_up()
+            self.line_up()
         elif c == ord('f'):
-            self.ns_page_down()
+            self.page_down()
         elif c == ord('b'):
-            self.ns_page_up()
+            self.page_up()
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
-            line = self._options[i]
+            line = self.lines[i]
             if line[0] == 'group':
                 self.win.insstr(i - self.beg, 6, line[1], curses.A_BOLD)
             elif line[0] == 'hline':
@@ -567,40 +578,29 @@ class NcmpyHelp(NcmpyMod, NcmpyScroll):
                 pass
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._block_resizew()
-
-class NcmpyQueue(NcmpyMod, NcmpyScroll):
+class QueuePane(CursedPane):
     '''Queue = current playlist.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        NcmpyScroll.__init__(self)
+        CursedPane.__init__(self, win, main)
 
-        self.nsks = [ord('l'), ord('\'')]
-        self.psks = [ord('d'), ord('J'), ord('K')]
+        # Playlist version.
+        self.pl_version = -1
 
-        # playlist version
-        self._version = -1
+        # Auto center current song.
+        self.auto_center = False
 
-        # auto-center
-        self._auto_center = False
+    def update_data(self):
+        Pane.update_data(self)
 
-    def updated(self):
-        NcmpyMod.updated(self)
+        # Fetch playlist if version is different.
+        if self.pl_version != int(self.status['playlist']):
+            self.queue = self.mpc.playlistinfo()
+            self.num = len(self.queue)
+            self.beg = self.clamp(self.beg)
+            self.sel = self.clamp(self.sel)
 
-        if self.main.c in self.main.allpsks:
-            return
-
-        # fetch playlist if version is different
-        if self._version != int(self.main.status['playlist']):
-            self._queue = self.mpc.playlistinfo()
-            self.num = len(self._queue)
-            self.beg = self._clamp(self.beg)
-            self.sel = self._clamp(self.sel)
-            # self.cur is set later, so not validated here
-
-            for song in self._queue:
+            for song in self.queue:
                 if c.enable_rating:
                     try:
                         rating = int(self.mpc.sticker_get(\
@@ -612,7 +612,7 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
                 else:
                     song['rating'] = 0
 
-            self._version = int(self.status['playlist'])
+            self.pl_version = int(self.status['playlist'])
 
         self.cur = self.status.has_key('song') and int(self.status['song']) or 0
 
@@ -641,22 +641,24 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
             self.mpc.add('')
         elif c == ord('c'):
             self.mpc.clear()
-            self.num, self.beg, self.sel, self.cur = 0, 0, 0, 0
+            self.num = self.beg = self.sel = self.cur = 0
         elif c == ord('d'):
             if self.num > 0:
-                self.main.pending.append('deleteid({})'.format(self._queue[self.sel]['id']))
-                self._queue.pop(self.sel)
+                self.main.pending.append('deleteid({})'.format(self.queue[self.sel]['id']))
+#                self.mpc.deleteid(self.queue[self.sel]['id'])
+                self.queue.pop(self.sel)
                 if self.sel < self.cur:
                     self.cur -= 1
                 self.num -= 1
-                self.beg = self._clamp(self.beg)
-                self.sel = self._clamp(self.sel)
-                self.cur = self._clamp(self.cur)
+                self.beg = self.clamp(self.beg)
+                self.sel = self.clamp(self.sel)
+                self.cur = self.clamp(self.cur)
         elif c == ord('J'):
             if self.sel + 1 < self.num:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel + 1))
-                self._queue[self.sel], self._queue[self.sel + 1] = \
-                        self._queue[self.sel + 1], self._queue[self.sel]
+#                self.mpc.swap(self.sel, self.sel + 1)
+                self.queue[self.sel], self.queue[self.sel + 1] = \
+                        self.queue[self.sel + 1], self.queue[self.sel]
                 if self.cur == self.sel:
                     self.cur += 1
                 elif self.cur == self.sel + 1:
@@ -665,8 +667,9 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
         elif c == ord('K'):
             if self.sel > 0:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel - 1))
-                self._queue[self.sel - 1], self._queue[self.sel] = \
-                        self._queue[self.sel], self._queue[self.sel - 1]
+#                self.mpc.swap(self.sel, self.sel - 1)
+                self.queue[self.sel - 1], self.queue[self.sel] = \
+                        self.queue[self.sel], self.queue[self.sel - 1]
                 if self.cur == self.sel - 1:
                     self.cur += 1
                 elif self.cur == self.sel:
@@ -675,46 +678,45 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
         elif c == ord('e'):
             self.mpc.shuffle()
         elif c == ord('\n'):
-            self.mpc.playid(self._queue[self.sel]['id'])
+            self.mpc.playid(self.queue[self.sel]['id'])
         elif c in range(ord('1'), ord('5') + 1):
             if c.enable_rating:
                 rating = c - ord('0')
-                song = self._queue[self.cur]
+                song = self.queue[self.cur]
                 self.mpc.sticker_set('song', song['file'], 'rating', rating)
                 song['rating'] = rating
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
             self._search('Queue', c)
         elif c == ord('\''):
-            self._auto_center = not self._auto_center
+            self.auto_center = not self.auto_center
         elif c == ord(';'):
-            self.board['path'] = self._queue[self.sel]['file']
+            self.board['path'] = self.queue[self.sel]['file']
 
-        # set q_sel in shared memory (INFO mod will use)
+        # Record selected song in board.
         if self.num > 0:
-            self.board['q_sel'] = self._queue[self.sel]
-
+            self.board['queue-selected'] = self.queue[self.sel]
 
     def round2(self):
         uri = self.board.get('locate')
         if uri:
-            for i in range(len(self._queue)):
-                if uri == self._queue[i]['file']:
+            for i in range(len(self.queue)):
+                if uri == self.queue[i]['file']:
                     self.locate(i)
                     break
             else:
                 self.board['msg'] = 'Not found in playlist'
 
-        # auto center
-        if self._auto_center:
+        # Auto center.
+        if self.auto_center:
             self.locate(self.cur)
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
-            item = self._queue[i]
-            title = self._get_tag('title', item) or os.path.basename(item['file'])
+            item = self.queue[i]
+            title = get_tag('title', item) or os.path.basename(item['file'])
             rating = item['rating']
-            tm = self._format_time(item['time'])
+            tm = format_time(item['time'])
 
             if i == self.cur:
                 self.win.attron(curses.A_BOLD)
@@ -730,44 +732,42 @@ class NcmpyQueue(NcmpyMod, NcmpyScroll):
                 self.win.attroff(curses.A_BOLD)
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._block_resizew()
-
-class NcmpyDatabase(NcmpyMod, NcmpyScroll):
+class DatabasePane(CursedPane):
     '''All songs/directories/playlists in database.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        NcmpyScroll.__init__(self)
+        CursedPane.__init__(self, win, main)
 
-        # current displayed dir
-        self._dir = ''
-        self._view = self._build_view()
+        # Current dir.
+        self.dir = ''
+        self.items = self.list_items()
 
-    def _build_view(self, keeppos=False):
-        '''Build view using self._dir.
+    def list_items(self, keeppos=False):
+        '''
+        List contents of current dir.
 
-        A view is rebuilt when self._dir changes (ex. database update),
-        or new items are added/removed (ex. playlist add/delete).'''
+        This method is called when current dir changes (e.g. database update), or new items are
+        added or removed (e.g. playlist add/delete).
+        '''
 
-        view = self.mpc.lsinfo(self._dir)
-        view.insert(0, {'directory' : '..'})
-        self.num = len(view)
+        items = self.mpc.lsinfo(self.dir)
+        items.insert(0, {'directory' : '..'})
+        self.num = len(items)
         if keeppos:
-            self.beg = self._clamp(self.beg)
-            self.sel = self._clamp(self.sel)
+            self.beg = self.clamp(self.beg)
+            self.sel = self.clamp(self.sel)
         else:
             self.beg = 0
             self.sel = 0
-        return view
+        return items
 
-    def updated(self):
-        NcmpyMod.updated(self)
+    def update_data(self):
+        Pane.update_data(self)
 
-        if self.board.get('main-database') == 'updated':
-            self._dir = ''
-            self._view = self._build_view()
-            self.board['msg'] = 'Database updated'
+        if self.board.has_key('database-updated'):
+            self.dir = ''
+            self.items = self.list_items()
+            self.board['msg'] = 'Database updated.'
 
     def round1(self, c):
         if c == ord('j'):
@@ -789,31 +789,31 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
         elif c == ord('G'):
             self.to_last()
         elif c == ord('\''):
-            old_dir = self._dir
-            self._dir = os.path.dirname(self._dir)
-            self._view = self._build_view()
-            for i in range(len(self._view)):
-                if self._view[i].get('directory') == old_dir:
+            oldroot = self.dir
+            self.dir = os.path.dirname(self.dir)
+            self.items = self.list_items()
+            for i in range(len(self.items)):
+                if self.items[i].get('directory') == oldroot:
                     self.locate(i)
                     break
         elif c == ord('"'):
-            self._dir = ''
-            self._view = self._build_view()
+            self.dir = ''
+            self.items = self.list_items()
         elif c == ord('\n'):
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             if item.has_key('directory'):
                 uri = item['directory']
                 if uri == '..':
-                    old_dir = self._dir
-                    self._dir = os.path.dirname(self._dir)
-                    self._view = self._build_view()
-                    for i in range(len(self._view)):
-                        if self._view[i].get('directory') == old_dir:
+                    oldroot = self.dir
+                    self.dir = os.path.dirname(self.dir)
+                    self.items = self.list_items()
+                    for i in range(len(self.items)):
+                        if self.items[i].get('directory') == oldroot:
                             self.locate(i)
                             break
                 else:
-                    self._dir = uri
-                    self._view = self._build_view()
+                    self.dir = uri
+                    self.items = self.list_items()
 
             elif item.has_key('file'):
                 uri = item['file']
@@ -833,17 +833,17 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
                 else:
                     self.board['msg'] = 'Playlist {} loaded'.format(name)
         elif c == ord('a'):
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             if item.has_key('directory'):
                 uri = item['directory']
             else:
                 uri = item['file']
             if uri == '..':
-                self.mpc.add(os.path.dirname(self._dir))
+                self.mpc.add(os.path.dirname(self.dir))
             else:
                 self.mpc.add(uri)
         elif c == ord('d'):
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             if item.has_key('playlist'):
                 name = item['playlist']
                 try:
@@ -852,45 +852,45 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
                     self.board['msg'] = str(e).rsplit('} ')[1]
                 else:
                     self.board['msg'] = 'Playlist {} deleted'.format(name)
-                    self._view = self._build_view(keeppos=True)
+                    self.items = self.list_items(keeppos=True)
         elif c == ord('U'):
             self.mpc.update()
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
             self._search('Database', c)
         elif c == ord(';'):
             # tell QUEUE we want to locate a song
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             if item.has_key('file'):
                 self.board['locate'] = item.get('file')
             else:
                 self.board['msg'] = 'No song selected'
 
-        # set d_sel in shared memory (INFO mod will use)
-        self.board['d_sel'] = self._view[self.sel].get('file')
+        # Record selected song in borard.
+        self.board['database-selected'] = self.items[self.sel].get('file')
 
     def round2(self):
         # if there's a path request, rebuild view, using
-        # dirname(path) as display root, and search for the
+        # dirname(path) as display dir, and search for the
         # requested song.
         uri = self.board.get('path')
         if uri:
-            self._dir = os.path.dirname(uri)
-            self._view = self._build_view()
-            for i in range(len(self._view)):
-                if self._view[i].get('file') == uri:
+            self.dir = os.path.dirname(uri)
+            self.items = self.list_items()
+            for i in range(len(self.items)):
+                if self.items[i].get('file') == uri:
                     self.locate(i)
                     break
             else:
                 self.board['msg'] = 'Not found in database'
 
         # if a playlist is saved, rebuild view, keep original positions
-        if self.board.get('main-playlist') == 'saved':
-            self._view = self._build_view(keeppos=True)
+        if self.board.get('playlist') == 'saved':
+            self.items = self.list_items(keeppos=True)
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
-            item = self._view[i]
+            item = self.items[i]
             if item.has_key('directory'):
                 t, uri = 'directory', item['directory']
             elif item.has_key('file'):
@@ -914,22 +914,18 @@ class NcmpyDatabase(NcmpyMod, NcmpyScroll):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._block_resizew()
-
-class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
+class LyricsPane(ScrollPane, threading.Thread):
     '''Display lyrics.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        NcmpyScroll.__init__(self)
+        ScrollPane.__init__(self, win, main)
         threading.Thread.__init__(self, name='lyrics')
 
         # directory to save lyrics.
         # Make sure have write permission.
         self._lyrics_dir = c.lyrics_dir
 
-        # new song, maintained by module
+        # new song, maintained by pane
         self._nsong = None
         # old song, maintained by worker
         self._osong = None
@@ -949,7 +945,7 @@ class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
         self._cv = threading.Condition()
 
         # auto-center
-        self._auto_center = True
+        self.auto_center = True
 
         # osd engine
         if c.enable_osd:
@@ -970,15 +966,15 @@ class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
         else:
             return tag.replace(' ', '').lower()
 
-    def updated(self):
-        NcmpyMod.updated(self)
+    def update_data(self):
+        Pane.update_data(self)
 
         song = self.currentsong
 
-        # do nothing if cannot acquire lock
+        # Do nothing if cannot acquire lock.
         if self._cv.acquire(blocking=False):
             self._nsong = song.get('file')
-            # if currengsong changes, wake up worker
+            # If currengsong changes, wake up worker.
             if self._nsong != self._osong:
                 self._artist = song.get('artist')
                 self._title = song.get('title')
@@ -998,17 +994,17 @@ class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
 
     def round1(self, c):
         if c == ord('j'):
-            self.ns_line_down()
+            self.line_down()
         elif c == ord('k'):
-            self.ns_line_up()
+            self.line_up()
         elif c == ord('f'):
-            self.ns_page_down()
+            self.page_down()
         elif c == ord('b'):
-            self.ns_page_up()
+            self.page_up()
         elif c == ord('l'):
             self.locate(self.cur)
         elif c == ord('\''):
-            self._auto_center = not self._auto_center
+            self.auto_center = not self.auto_center
         elif c == ord('K'):
             self._save_lyrics()
 
@@ -1060,10 +1056,10 @@ class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
         self.cur = self.current_line()
 
         # auto center
-        if self._auto_center:
+        if self.auto_center:
             self.locate(self.cur)
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         attr = curses.A_BOLD | curses.color_pair(3)
         for i in range(self.beg, min(self.beg + self.height, self.num)):
@@ -1109,10 +1105,7 @@ class NcmpyLyrics(NcmpyMod, NcmpyScroll, threading.Thread):
                     self._lyrics_state = 'net'
             self._osong = self._nsong
 
-    def resizew(self):
-        self._block_resizew()
-
-class NcmpyInfo(NcmpyMod, NcmpyScroll):
+class InfoPane(ScrollPane):
     '''Information about songs:
 
         currently playing
@@ -1120,9 +1113,7 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
         currently selected in database'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        NcmpyScroll.__init__(self)
-        self._prevtmodname = None
+        ScrollPane.__init__(self, win, main)
         # current playing
         self._cp = {}
         # selected in queue
@@ -1131,7 +1122,7 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
         self._sid = {}
         # database.sel's uri cache
         self._dburi = None
-        self._options = [
+        self.lines = [
                 ('group', 'Currently Playing', None),
                 ('hline', None, None),
                 ('item', 'Title', ''),
@@ -1179,28 +1170,22 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
                 ('item', 'DBUpdateTime', ''),
                 ('blank', None, None),
                 ]
-        self._options_d = None
+        self.lines_d = None
         self._song_key_list = ['Title', 'Artist', 'Album', 'Track', 'Genre', 'Date', 'Time', 'File']
         self._stats_key_list = [\
                 'Songs', 'Artists', 'Albums', 'Uptime', 'Playtime', 'DB_Playtime', 'DB_Update']
 
     def round1(self, c):
         if c == ord('j'):
-            self.ns_line_down()
+            self.line_down()
         elif c == ord('k'):
-            self.ns_line_up()
+            self.line_up()
         elif c == ord('f'):
-            self.ns_page_down()
+            self.page_down()
         elif c == ord('b'):
-            self.ns_page_up()
-        elif c == ord('h'):
-            if self._prevtmodname:
-                self.board['i_back'] = self._prevtmodname
+            self.page_up()
 
     def round2(self):
-        if self.board.has_key('prevtmodname'):
-            self._prevtmodname = self.board['prevtmodname']
-
         # get song info.
 
         # cp = currently playing
@@ -1211,11 +1196,11 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
         # on failure, _cp and _siq are empty dicts.
         self._cp = self.currentsong
         try:
-            self._siq = self.board.get('q_sel') or {}
+            self._siq = self.board.get('queue-selected') or {}
         except (mpd.CommandError, IndexError):
             self._siq = {}
         try:
-            uri = self.board.get('d_sel')
+            uri = self.board.get('database-selected')
             if uri and uri != self._dburi and not self.main.idle:
                 self._sid = self.mpc.listallinfo(uri)[0]
         except (mpd.CommandError, IndexError):
@@ -1235,32 +1220,31 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
 
         # format time
         for l in (cp_list, siq_list, sid_list):
-            l[6] = (l[6][0], l[6][1], self._format_time(l[6][2]))
+            l[6] = (l[6][0], l[6][1], format_time(l[6][2]))
         for i in range(3, 6):
-            stats_list[i] = (stats_list[i][0], stats_list[i][1], \
-                    self._format_time(stats_list[i][2]))
+            stats_list[i] = (stats_list[i][0], stats_list[i][1], format_time(stats_list[i][2]))
         stats_list[6] = (stats_list[6][0], stats_list[6][1], \
                 time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(stats_list[6][2]))))
 
         # merge into main list
-        self._options[2:10] = cp_list
-        self._options[13:21] = siq_list
-        self._options[24:32] = sid_list
-        self._options[35:42] = stats_list
+        self.lines[2:10] = cp_list
+        self.lines[13:21] = siq_list
+        self.lines[24:32] = sid_list
+        self.lines[35:42] = stats_list
 
         # set up options display
-        self._options_d = self._options[:]
+        self.lines_d = self.lines[:]
         # breakup file paths
         for k in (31, 20, 9):
-            self._options_d[k:k+1] = [('item', '', '/' + i) for i in self._options[k][2].split('/')]
-            self._options_d[k] = ('item', 'File', self._options_d[k][2][1:])
+            self.lines_d[k:k+1] = [('item', '', '/' + i) for i in self.lines[k][2].split('/')]
+            self.lines_d[k] = ('item', 'File', self.lines_d[k][2][1:])
 
-        self.num = len(self._options_d)
+        self.num = len(self.lines_d)
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
-            line = self._options_d[i]
+            line = self.lines_d[i]
             if line[0] == 'group':
                 self.win.insstr(i - self.beg, 6, line[1], curses.A_BOLD)
             elif line[0] == 'hline':
@@ -1273,23 +1257,19 @@ class NcmpyInfo(NcmpyMod, NcmpyScroll):
                 pass
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._block_resizew()
-
-class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
+class ArtistAlbumPane(CursedPane):
     '''List artists/albums in database.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        NcmpyScroll.__init__(self)
+        CursedPane.__init__(self, win, main)
 
         # current displayed dir
         self._type = 'artist'
         self._artist = None
         self._album = None
-        self._view = self._build_view()
+        self._view = self.build()
 
-    def _build_view(self):
+    def build(self):
         '''Build view using self._type, self._artist and self._album.
 
         A view is rebuilt when self._type changes.'''
@@ -1330,31 +1310,31 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
                 pass
             elif self._type == 'album':
                 self._type = 'artist'
-                self._view = self._build_view()
+                self._view = self.build()
                 for i in range(len(self._view)):
                     if self._view[i] == self._artist:
                         self.locate(i)
                         break
             elif self._type == 'song':
                 self._type = 'album'
-                self._view = self._build_view()
+                self._view = self.build()
                 for i in range(len(self._view)):
                     if self._view[i] == self._album:
                         self.locate(i)
                         break
         elif c == ord('"'):
             self._type = 'artist'
-            self._view = self._build_view()
+            self._view = self.build()
         elif c == ord('\n'):
             item = self._view[self.sel]
             if self._type == 'artist':
                 self._artist = item
                 self._type = 'album'
-                self._view = self._build_view()
+                self._view = self.build()
             elif self._type == 'album':
                 self._album = item
                 self._type = 'song'
-                self._view = self._build_view()
+                self._view = self.build()
             elif self._type == 'song':
                 uri = item['file']
                 songs = self.mpc.playlistfind('file', uri)
@@ -1383,11 +1363,11 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
                 self.board['msg'] = 'No song selected'
 
     def round2(self):
-        if self.board.has_key('Database Updated.'):
+        if self.board.has_key('database-updated'):
             self._type = 'artist'
-            self._view = self._build_view()
+            self._view = self.build()
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self._view[i]
@@ -1395,7 +1375,7 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
             if self._type in ['artist', 'album']:
                 val = item
             elif self._type == 'song':
-                val = self._get_tag('title', item) or os.path.basename(item.get('file'))
+                val = get_tag('title', item) or os.path.basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
@@ -1413,19 +1393,15 @@ class NcmpyArtistAlbum(NcmpyMod, NcmpyScroll):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-    def resizew(self):
-        self._block_resizew()
-
-class NcmpySearch(NcmpyMod, NcmpyScroll):
+class SearchPane(CursedPane):
     '''Search in the database.'''
 
     def __init__(self, win, main):
-        NcmpyMod.__init__(self, win, main)
-        NcmpyScroll.__init__(self)
+        CursedPane.__init__(self, win, main)
 
         self._view = []
 
-    def _build_view(self, kw):
+    def build(self, kw):
         '''Build view using search keywords.'''
 
         try:
@@ -1462,7 +1438,7 @@ class NcmpySearch(NcmpyMod, NcmpyScroll):
         elif c == ord('G'):
             self.to_last()
         elif c == ord('B'):
-            self._view = self._build_view(self.main.e.getstr('Database Search'))
+            self._view = self.build(self.main.e.getstr('Database Search'))
         elif c == ord('\n'):
             item = self._view[self.sel]
             uri = item['file']
@@ -1486,12 +1462,12 @@ class NcmpySearch(NcmpyMod, NcmpyScroll):
             else:
                 self.board['msg'] = 'No song selected'
 
-    def updatew(self):
+    def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self._view[i]
 
-            val = self._get_tag('title', item) or os.path.basename(item.get('file'))
+            val = get_tag('title', item) or os.path.basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
@@ -1500,9 +1476,6 @@ class NcmpySearch(NcmpyMod, NcmpyScroll):
             if i == self.sel:
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
-
-    def resizew(self):
-        self._block_resizew()
 
 class Ncmpy():
     '''Main controller.'''
@@ -1529,7 +1502,7 @@ class Ncmpy():
 
         # main configuration
         self.height, self.width = self.stdscr.getmaxyx()
-        self.tmodname = 'Queue'
+        self.tpanename = 'Queue'
         self.loop = False
         self.idle = False
         self.seek = False
@@ -1545,7 +1518,7 @@ class Ncmpy():
                 ord('j'), ord('k'), ord('f'), ord('b'),
                 ord('H'), ord('M'), ord('L'), ord('g'), ord('G'),
                 curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4,
-                '/', '?', 'n', 'N',
+                ord('/'), ord('?'), ord('n'), ord('N'),
                 -1
                 ]
         # partial sync keys
@@ -1564,29 +1537,32 @@ class Ncmpy():
     def _init_board(self):
         self.board = {}
 
-    def _init_mods(self):
-        '''Initialize modules (mods).'''
+    def _init_panes(self):
+        '''Initialize panes.'''
 
-        self.m = NcmpyMenu(self.stdscr.subwin(1, self.width, 0, 0), self)
-        self.t = NcmpyLine(self.stdscr.subwin(1, self.width, 1, 0), self)
-        self.p = NcmpyProgress(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)
-        self.s = NcmpyStatus(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
-        self.e = NcmpyMessage(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
-        self.h = NcmpyHelp(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.q = NcmpyQueue(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.d = NcmpyDatabase(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.l = NcmpyLyrics(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.a = NcmpyArtistAlbum(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.r = NcmpySearch(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.i = NcmpyInfo(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.m = MenuPane(self.stdscr.subwin(1, self.width, 0, 0), self)
+        self.t = LinePane(self.stdscr.subwin(1, self.width, 1, 0), self)
 
-        # module dict
-        self.mdict = {
+        self.p = ProgressPane(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)
+        self.s = StatusPane(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
+        self.e = MessagePane(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
+
+        self.h = HelpPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.q = QueuePane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.d = DatabasePane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.l = LyricsPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.a = ArtistAlbumPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.r = SearchPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.i = InfoPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+
+        # Pane dict.
+        self.pdict = {
                 'Menu' : self.m,
                 'Title' : self.t,
                 'Progress' : self.p,
                 'Status' : self.s,
                 'Message' : self.e,
+
                 'Help' : self.h,
                 'Queue' : self.q,
                 'Database' : self.d,
@@ -1595,19 +1571,19 @@ class Ncmpy():
                 'Search' : self.r,
                 'Info' : self.i,
                 }
-        # module list
-        self.mlist = self.mdict.values()
+        # Pane list.
+        self.plist = self.pdict.values()
 
-        # bar module dict
-        self.bmdict = {
+        # Bar pane dict.
+        self.bpdict = {
                 'Menu' : self.m,
                 'Title' : self.t,
                 'Progress' : self.p,
                 'Status' : self.s,
                 'Message' : self.e,
                 }
-        # bar module list
-        self.bmlist = self.bmdict.values()
+        # Bar pane list.
+        self.bplist = self.bpdict.values()
 
     def __enter__(self):
         self._init_curses()
@@ -1615,7 +1591,7 @@ class Ncmpy():
         self._init_conf()
         self._init_data()
         self._init_board()
-        self._init_mods()
+        self._init_panes()
 
         # start lyrics daemon thread
         self.l.daemon = True
@@ -1627,20 +1603,21 @@ class Ncmpy():
         return self
 
     def __exit__(self, type, value, traceback):
+
         curses.endwin()
 
-    def updated(self):
-        # update main data
+    def update_data(self):
+        # Update data from MPD.
         self.status = self.mpc.status()
         self.stats = self.mpc.stats()
         self.currentsong = self.mpc.currentsong()
 
-        # update mods data
-        for mod in self.mlist:
-            mod.updated()
+        # Update panes data.
+        for pane in self.plist:
+            pane.update_data()
 
     def round1(self, c):
-        # seeking
+        # Seeking.
         if c in (curses.KEY_LEFT, curses.KEY_RIGHT, curses.KEY_DOWN, curses.KEY_UP):
             if self.status['state'] in ['play', 'pause']:
                 if not self.seek:
@@ -1657,12 +1634,12 @@ class Ncmpy():
                 self.status['time'] = '{}:{}'.format(self.elapsed, self.total)
         else:
             if self.seek:
-                self.status['time'] = '{}:{}'.format(self.elapsed, self.total)
                 if self.status['state'] in ['play', 'pause']:
                     self.mpc.seekid(self.status['songid'], self.elapsed)
                 self.seek = False
+                self.status['time'] = '{}:{}'.format(self.elapsed, self.total)
 
-        # volume control
+        # Volume control.
         if c == ord('9'):
             new_vol = max(int(self.status['volume']) - 1, 0)
             self.mpc.setvol(new_vol)
@@ -1672,7 +1649,7 @@ class Ncmpy():
             self.mpc.setvol(new_vol)
             self.status['volume'] = str(new_vol)
 
-        # playback
+        # Playback control.
         elif c == ord(' '):
             self.mpc.pause()
         elif c == ord('s'):
@@ -1682,21 +1659,21 @@ class Ncmpy():
         elif c == ord('>'):
             self.mpc.next()
 
-        # marks
+        # Mode control.
         elif c == ord('u'):
-            self.mpc.consume(1 - int(self.status['consume']))
             self.status['consume'] = 1 - int(self.status['consume'])
+            self.mpc.consume(self.status['consume'])
         elif c == ord('i'):
-            self.mpc.random(1 - int(self.status['random']))
             self.status['random'] = 1 - int(self.status['random'])
+            self.mpc.random(self.status['random'])
         elif c == ord('o'):
-            self.mpc.repeat(1 - int(self.status['repeat']))
             self.status['repeat'] = 1 - int(self.status['repeat'])
+            self.mpc.repeat(self.status['repeat'])
         elif c == ord('p'):
-            self.mpc.single(1 - int(self.status['single']))
             self.status['single'] = 1 - int(self.status['single'])
+            self.mpc.single(self.status['single'])
 
-        # playlist save/load
+        # Playlist save/load.
         elif c == ord('S'):
             name = self.e.getstr('Save')
             try:
@@ -1705,7 +1682,7 @@ class Ncmpy():
                 self.board['msg'] = str(e).rsplit('} ')[1]
             else:
                 self.board['msg'] = 'Playlist {} saved'.format(name)
-                self.board['main-playlist'] = 'saved'
+                self.board['playlist'] = 'saved'
         elif c == ord('O'):
             name = self.e.getstr('Load')
             try:
@@ -1715,7 +1692,7 @@ class Ncmpy():
             else:
                 self.board['msg'] = 'Playlist {} loaded'.format(name)
 
-        # basic search
+        # Basic search.
         elif c in [ord('/'), ord('?')]:
             search = self.e.getstr('Find')
             if search:
@@ -1725,72 +1702,77 @@ class Ncmpy():
                 elif c == ord('?'):
                     self.search_di = -1
 
-        # send to tmod
-        self.mdict[self.tmodname].round1(c)
+        # Top pane do round1 with input char.
+        self.pdict[self.tpanename].round1(c)
 
-        # other mods do round1 with no input char
-        for modname in self.mdict:
-            if modname != self.tmodname:
-                self.mdict[modname].round1(-1)
+        # Other panes do round1 without input char.
+        for panename in self.pdict:
+            if panename != self.tpanename:
+                self.pdict[panename].round1(-1)
 
-        # window switch
-        # Must be placed AFTER keyevent is dispatched to tmod,
-        # since it happens in OLD tmod.
-        if c in (curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, \
-                curses.KEY_F4, curses.KEY_F5, curses.KEY_F6):
-            if c == curses.KEY_F1:
-                self.tmodname = 'Help'
-            elif c == curses.KEY_F2:
-                self.tmodname = 'Queue'
-            elif c == curses.KEY_F3:
-                self.tmodname = 'Database'
-            elif c == curses.KEY_F4:
-                self.tmodname = 'Lyrics'
-            elif c == curses.KEY_F5:
-                self.tmodname = 'Artist-Album'
-            elif c == curses.KEY_F6:
-                self.tmodname = 'Search'
-        elif c == ord('h'):
-            if self.tmodname != 'Info':
-                self.board['prevtmodname'] = self.tmodname
-                self.tmodname = 'Info'
+        # Pane switch.
+        if c == curses.KEY_F1:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Help'
+        elif c == curses.KEY_F2:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Queue'
+        elif c == curses.KEY_F3:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Database'
+        elif c == curses.KEY_F4:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Lyrics'
+        elif c == curses.KEY_F5:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Artist-Album'
+        elif c == curses.KEY_F6:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Search'
+        elif c == curses.KEY_F7:
+            self.prevtpanename = self.tpanename
+            self.tpanename = 'Info'
+        elif c == curses.KEY_F8:
+            if self.prevtpanename:
+                self.tpanename, self.prevtpanename = self.prevtpanename, self.tpanename
 
     def round2(self):
         if self.board.has_key('path'):
-            self.tmodname = 'Database'
+            self.tpanename = 'Database'
 
         if self.board.has_key('locate'):
-            self.tmodname = 'Queue'
+            self.tpanename = 'Queue'
 
-        if self.board.has_key('i_back'):
-            self.tmodname = self.board['i_back']
+        for pane in self.plist:
+            pane.round2()
 
-        for mod in self.mlist:
-            mod.round2()
-
-    def updatew(self):
+    def update_win(self):
         if c.enable_osd:
-            self.l.updatew()
+            self.l.update_win()
 
-        self.mdict[self.tmodname].updatew()
+        self.pdict[self.tpanename].update_win()
 
-        for mod in self.bmlist:
-            mod.updatew()
+        for pane in self.bplist:
+            pane.update_win()
 
         curses.doupdate()
 
     def enter_idle(self):
-        '''Enter idle state. Must be called outside idle state.
+        '''
+        Enter idle state. Must be called outside idle state.
 
-        No return value.'''
+        No return value.
+        '''
 
         self.mpc.send_idle()
         self.idle = True
 
     def leave_idle(self):
-        '''Leave idle state. Must be called inside idle state.
+        '''
+        Leave idle state. Must be called inside idle state.
 
-        Return Value: Events received in idle state.'''
+        Return Value: Events received in idle state.
+        '''
 
         self.mpc.send_noidle()
         self.idle = False
@@ -1798,7 +1780,7 @@ class Ncmpy():
         try:
             return self.mpc.fetch_idle()
         except mpd.PendingCommandError:
-            # return None if nothing received
+            # Return None if nothing received.
             return None
 
     def try_enter_idle(self):
@@ -1812,74 +1794,47 @@ class Ncmpy():
     def process(self, fd):
         '''Process init/timeout/mpd/stdin events. Called in main loop.'''
 
-        tmod = self.mdict[self.tmodname]
-        self.allnsks, self.allpsks = copy.deepcopy(self.nsks), copy.deepcopy(self.psks)
-        self.allnsks.extend(tmod.nsks)
-        self.allpsks.extend(tmod.psks)
-
-        lastc = self.c
-
-        # get input
+        # Get input if event is 'stdin'.
         if fd == 'stdin':
-            self.c = c = self.stdscr.getch()
-        else:
-            self.c = c = -1
-
-        # sync vs nosync
-        if fd == 'timeout':
-            if self.status['state'] == 'play':
-                self.sync = True
-            elif lastc in self.allnsks:
-                self.sync = False
-            else:
-                self.sync = True
-        elif fd == 'init' or fd == 'mpd':
-            self.sync = True
-        elif fd == 'stdin':
+            c = self.c = self.stdscr.getch()
             if c == ord('q'):
                 self.loop = False
                 return
-            elif self.status['state'] == 'play':
-                self.sync = True
-            elif c in self.allnsks or c in self.allpsks:
-                self.sync = False
-            else:
-                self.sync = True
+        else:
+            c = self.c = -1
 
+        events = self.try_leave_idle()
         self.board.clear()
 
-        if self.sync:
-            events = self.try_leave_idle()
+        if events and 'database' in events:
+            self.board['database-updated'] = None
 
-            if events and 'database' in events:
-                self.board['main-database'] = 'updated'
+        if self.pending:
+            self.mpc.command_list_ok_begin()
+            for task in self.pending:
+                exec('self.mpc.' + task)
+            self.mpc.command_list_end()
+            self.pending = []
 
-            if c not in self.allpsks and self.pending:
-                self.mpc.command_list_ok_begin()
-                for task in self.pending:
-                    exec('self.mpc.' + task)
-                self.mpc.command_list_end()
-                self.pending = []
-
-            self.updated()
-        self.round1(c)   # nsks/psks won't cause interaction with server
-        self.round2()    # nsks/psks won't cause interaction with server
-        self.updatew()         # won't interact with server
+        self.update_data()
+        self.round1(c)
+        self.round2()
+        self.update_win()
 
         if fd == 'stdin':
             curses.flushinp()
         else:
             self.try_enter_idle()
 
-    def resizew(self):
+    def resize_win(self):
         '''Reset display. Called in SIGWINCH handler.'''
 
         curses.endwin()
         self.stdscr.refresh()
         self.height, self.width = self.stdscr.getmaxyx()
 
-        for mod in self.mlist:
-            mod.resizew()
+        for pane in self.plist:
+            pane.resize_win()
 
     def main_loop(self):
         '''Main loop.'''
@@ -1887,8 +1842,6 @@ class Ncmpy():
         poll = select.poll()
         poll.register(self.mpc.fileno(), select.POLLIN)
         poll.register(sys.stdin.fileno(), select.POLLIN)
-
-        # already in idle state since __enter__ calls try_enter_idle in the end.
 
         self.loop = True
         while self.loop:
@@ -1911,11 +1864,12 @@ class Ncmpy():
 
         if signum == signal.SIGWINCH:
             # Resize window.
-            self.resizew()
+            self.resize_win()
             # Consume KEY_RESIZE and update.
             self.process('stdin')
 
 if __name__ == '__main__':
+
     try:
         locale.setlocale(locale.LC_ALL,'')
 
@@ -1929,3 +1883,4 @@ if __name__ == '__main__':
             ncmpy.main_loop()
     finally:
         curses.endwin()
+

@@ -1,6 +1,6 @@
-.swp
-.lrc
-.pyc
+*.swp
+*.lrc
+*.pyc
 MANIFEST
 build/
 dist/
