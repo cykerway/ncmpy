@@ -696,14 +696,14 @@ class QueuePane(CursedPane):
         elif c == ord('\''):
             self.auto_center = not self.auto_center
         elif c == ord(';'):
-            self.board['path'] = self.queue[self.sel]['file']
+            self.board['database-locate'] = self.queue[self.sel]['file']
 
         # Record selected song in board.
         if self.num > 0:
             self.board['queue-selected'] = self.queue[self.sel]
 
     def round2(self):
-        uri = self.board.get('locate')
+        uri = self.board.get('queue-locate')
         if uri:
             for i in range(len(self.queue)):
                 if uri == self.queue[i]['file']:
@@ -867,7 +867,7 @@ class DatabasePane(CursedPane):
             # tell QUEUE we want to locate a song
             item = self.items[self.sel]
             if item.has_key('file'):
-                self.board['locate'] = item.get('file')
+                self.board['queue-locate'] = item.get('file')
             else:
                 self.board['msg'] = 'No song selected'
 
@@ -878,7 +878,7 @@ class DatabasePane(CursedPane):
         # if there's a path request, rebuild view, using
         # dirname(path) as display dir, and search for the
         # requested song.
-        uri = self.board.get('path')
+        uri = self.board.get('database-locate')
         if uri:
             self.dir = os.path.dirname(uri)
             self.items = self.list_items()
@@ -1364,7 +1364,7 @@ class ArtistAlbumPane(CursedPane):
             # tell QUEUE we want to locate a song
             if self._type == 'song':
                 item = self.items[self.sel]
-                self.board['locate'] = item.get('file')
+                self.board['queue-locate'] = item.get('file')
             else:
                 self.board['msg'] = 'No song selected'
 
@@ -1464,7 +1464,7 @@ class SearchPane(CursedPane):
             # tell QUEUE we want to locate a song
             if self.sel < self.num:
                 item = self.items[self.sel]
-                self.board['locate'] = item.get('file')
+                self.board['queue-locate'] = item.get('file')
             else:
                 self.board['msg'] = 'No song selected'
 
@@ -1801,10 +1801,10 @@ class Ncmpy():
             self.tpanename = 'Output'
 
     def round2(self):
-        if self.board.has_key('path'):
+        if self.board.has_key('database-locate'):
             self.tpanename = 'Database'
 
-        if self.board.has_key('locate'):
+        if self.board.has_key('queue-locate'):
             self.tpanename = 'Queue'
 
         for pane in self.plist:
