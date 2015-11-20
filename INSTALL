@@ -7,8 +7,10 @@ To start ncmpy, run:
     ncmpy
 
 Main configuration file is /etc/ncmpy.conf
+
 Configuration sample is /usr/share/ncmpy/ncmpy.conf.example
 Edit and copy it to /etc/ncmpy.conf
+
 And you can also create a user-scope configuration file ~/.config/ncmpy/ncmpy.conf
 
 Default lyrics directory is ~/.config/ncmpy/lyrics
