@@ -568,7 +568,7 @@ class QueuePane(CursedPane):
         self.auto_center = False
 
     def update_data(self):
-        Pane.update_data(self)
+        CursedPane.update_data(self)
 
         # Fetch playlist if version is different.
         if self.pl_version != int(self.status['playlist']):
@@ -744,7 +744,7 @@ class DatabasePane(CursedPane):
         return items
 
     def update_data(self):
-        Pane.update_data(self)
+        CursedPane.update_data(self)
 
         if self.board.has_key('database-updated'):
             self.dir = ''
@@ -949,7 +949,7 @@ class LyricsPane(ScrollPane, threading.Thread):
             return tag.replace(' ', '').lower()
 
     def update_data(self):
-        Pane.update_data(self)
+        ScrollPane.update_data(self)
 
         song = self.currentsong
 
@@ -1467,7 +1467,7 @@ class OutputPane(CursedPane):
         self.outputs = []
 
     def update_data(self):
-        Pane.update_data(self)
+        CursedPane.update_data(self)
 
         self.outputs = self.mpc.outputs()
         self.num = len(self.outputs)
