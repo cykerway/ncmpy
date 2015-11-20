@@ -485,7 +485,7 @@ class HelpPane(ScrollPane):
 
                 ('group', 'Database', ''),
                 ('hline', None, None),
-                ('item', 'Enter', 'open directory / song / playlist'),
+                ('item', 'Enter', 'open directory / play song / load playlist'),
                 ('item', '\'', 'go to parent directory'),
                 ('item', '"', 'go to root directory'),
                 ('item', 'a', 'append song to queue recursively'),
@@ -502,7 +502,7 @@ class HelpPane(ScrollPane):
 
                 ('group', 'Artist-Album', ''),
                 ('hline', None, None),
-                ('item', 'Enter', 'open level / append to queue (if not existing yet) and play'),
+                ('item', 'Enter', 'open level / play song'),
                 ('item', '\'', 'go to parent level'),
                 ('item', '"', 'go to root level'),
                 ('item', 'a', 'append song to queue recursively'),
@@ -512,8 +512,8 @@ class HelpPane(ScrollPane):
                 ('group', 'Search', ''),
                 ('hline', None, None),
                 ('item', 'B', 'start a database search, syntax = <tag_name>:<tag_value>'),
-                ('item', 'Enter', 'append to queue (if not existing yet) and play'),
-                ('item', 'a', 'append to queue'),
+                ('item', 'Enter', 'play song'),
+                ('item', 'a', 'append song to queue'),
                 ('item', ';', 'locate selected song in queue'),
                 ('blank', None, None),
 
