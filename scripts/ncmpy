@@ -221,7 +221,7 @@ class CursedPane(BlockPane):
     def clamp(self, n):
         '''Clamp value into range [0, num).'''
 
-        return min(max(n, 0), self.num - 1)
+        return max(min(n, self.num - 1), 0)
 
     def block_resize_win(self):
         BlockPane.block_resize_win(self)
@@ -233,7 +233,7 @@ class CursedPane(BlockPane):
         if panename == 'Queue':
             items = self.queue
         elif panename in ['Database', 'Artist-Album', 'Search']:
-            items = self._view
+            items = self.items
 
         if self.main.search and self.main.search_di:
             di = {
@@ -417,7 +417,7 @@ class MessagePane(BarPane):
         msg = self.board.get('msg')
         if msg:
             self.msg = msg
-            self.timeout = 5
+            self.timeout = 10   # Magic!
 
         # TODO. Use a real timer.
         if self.timeout > 0:
@@ -443,6 +443,8 @@ class HelpPane(ScrollPane):
                 ('item', 'F4', 'Lyrics'),
                 ('item', 'F5', 'Artist-Album'),
                 ('item', 'F6', 'Search'),
+                ('item', 'F7', 'Info'),
+                ('item', 'F8', 'Output'),
                 ('blank', None, None),
                 ('item', 'q', 'quit'),
                 ('blank', None, None),
@@ -492,7 +494,6 @@ class HelpPane(ScrollPane):
                 ('item', 'l', 'select and center current song'),
                 ('item', '\'', 'toggle auto center'),
                 ('item', ';', 'locate selected song in database'),
-                ('item', 'h', 'get info about current/selected song'),
                 ('blank', None, None),
                 ('item', '1', 'rate selected song as     *'),
                 ('item', '2', 'rate selected song as    **'),
@@ -517,7 +518,6 @@ class HelpPane(ScrollPane):
                 ('item', '"', 'go to root directory'),
                 ('item', 'a', 'append song to queue recursively'),
                 ('item', ';', 'locate selected song in queue'),
-                ('item', 'h', 'get info about selected song'),
                 ('item', 'U', 'update database'),
                 ('blank', None, None),
 
@@ -547,7 +547,11 @@ class HelpPane(ScrollPane):
 
                 ('group', 'Info', ''),
                 ('hline', None, None),
-                ('item', 'h', 'back to previous window'),
+                ('blank', None, None),
+
+                ('group', 'Output', ''),
+                ('hline', None, None),
+                ('item', 't', 'toggle output'),
                 ('blank', None, None),
                 ]
         self.num = len(self.lines)
@@ -645,7 +649,6 @@ class QueuePane(CursedPane):
         elif c == ord('d'):
             if self.num > 0:
                 self.main.pending.append('deleteid({})'.format(self.queue[self.sel]['id']))
-#                self.mpc.deleteid(self.queue[self.sel]['id'])
                 self.queue.pop(self.sel)
                 if self.sel < self.cur:
                     self.cur -= 1
@@ -656,7 +659,6 @@ class QueuePane(CursedPane):
         elif c == ord('J'):
             if self.sel + 1 < self.num:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel + 1))
-#                self.mpc.swap(self.sel, self.sel + 1)
                 self.queue[self.sel], self.queue[self.sel + 1] = \
                         self.queue[self.sel + 1], self.queue[self.sel]
                 if self.cur == self.sel:
@@ -667,7 +669,6 @@ class QueuePane(CursedPane):
         elif c == ord('K'):
             if self.sel > 0:
                 self.main.pending.append('swap({}, {})'.format(self.sel, self.sel - 1))
-#                self.mpc.swap(self.sel, self.sel - 1)
                 self.queue[self.sel - 1], self.queue[self.sel] = \
                         self.queue[self.sel], self.queue[self.sel - 1]
                 if self.cur == self.sel - 1:
@@ -1267,7 +1268,7 @@ class ArtistAlbumPane(CursedPane):
         self._type = 'artist'
         self._artist = None
         self._album = None
-        self._view = self.build()
+        self.items = self.build()
 
     def build(self):
         '''Build view using self._type, self._artist and self._album.
@@ -1310,31 +1311,31 @@ class ArtistAlbumPane(CursedPane):
                 pass
             elif self._type == 'album':
                 self._type = 'artist'
-                self._view = self.build()
-                for i in range(len(self._view)):
-                    if self._view[i] == self._artist:
+                self.items = self.build()
+                for i in range(len(self.items)):
+                    if self.items[i] == self._artist:
                         self.locate(i)
                         break
             elif self._type == 'song':
                 self._type = 'album'
-                self._view = self.build()
-                for i in range(len(self._view)):
-                    if self._view[i] == self._album:
+                self.items = self.build()
+                for i in range(len(self.items)):
+                    if self.items[i] == self._album:
                         self.locate(i)
                         break
         elif c == ord('"'):
             self._type = 'artist'
-            self._view = self.build()
+            self.items = self.build()
         elif c == ord('\n'):
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             if self._type == 'artist':
                 self._artist = item
                 self._type = 'album'
-                self._view = self.build()
+                self.items = self.build()
             elif self._type == 'album':
                 self._album = item
                 self._type = 'song'
-                self._view = self.build()
+                self.items = self.build()
             elif self._type == 'song':
                 uri = item['file']
                 songs = self.mpc.playlistfind('file', uri)
@@ -1345,7 +1346,7 @@ class ArtistAlbumPane(CursedPane):
                     song = self.mpc.playlistfind('file', uri)[0]
                     self.mpc.playid(song['id'])
         elif c == ord('a'):
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             if self._type == 'artist':
                 self.mpc.findadd('artist', item)
             elif self._type == 'album':
@@ -1357,7 +1358,7 @@ class ArtistAlbumPane(CursedPane):
         elif c == ord(';'):
             # tell QUEUE we want to locate a song
             if self._type == 'song':
-                item = self._view[self.sel]
+                item = self.items[self.sel]
                 self.board['locate'] = item.get('file')
             else:
                 self.board['msg'] = 'No song selected'
@@ -1365,12 +1366,12 @@ class ArtistAlbumPane(CursedPane):
     def round2(self):
         if self.board.has_key('database-updated'):
             self._type = 'artist'
-            self._view = self.build()
+            self.items = self.build()
 
     def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
-            item = self._view[i]
+            item = self.items[i]
 
             if self._type in ['artist', 'album']:
                 val = item
@@ -1399,7 +1400,7 @@ class SearchPane(CursedPane):
     def __init__(self, win, main):
         CursedPane.__init__(self, win, main)
 
-        self._view = []
+        self.items = []
 
     def build(self, kw):
         '''Build view using search keywords.'''
@@ -1411,7 +1412,7 @@ class SearchPane(CursedPane):
                 self.board['msg'] = 'Nothing found :('
         except:
             view = []
-            self.board['msg'] = 'Invalid Syntax >_< Syntax = <tag_name>:<tag_value>'
+            self.board['msg'] = 'Syntax is <tag_name>:<tag_value>'
 
         self.num = len(view)
         self.beg = 0
@@ -1438,9 +1439,9 @@ class SearchPane(CursedPane):
         elif c == ord('G'):
             self.to_last()
         elif c == ord('B'):
-            self._view = self.build(self.main.e.getstr('Database Search'))
+            self.items = self.build(self.main.e.getstr('Database Search'))
         elif c == ord('\n'):
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             uri = item['file']
             songs = self.mpc.playlistfind('file', uri)
             if songs:
@@ -1450,14 +1451,14 @@ class SearchPane(CursedPane):
                 song = self.mpc.playlistfind('file', uri)[0]
                 self.mpc.playid(song['id'])
         elif c == ord('a'):
-            item = self._view[self.sel]
+            item = self.items[self.sel]
             self.mpc.add(item['file'])
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
             self.search('Search', c)
         elif c == ord(';'):
             # tell QUEUE we want to locate a song
             if self.sel < self.num:
-                item = self._view[self.sel]
+                item = self.items[self.sel]
                 self.board['locate'] = item.get('file')
             else:
                 self.board['msg'] = 'No song selected'
@@ -1465,7 +1466,7 @@ class SearchPane(CursedPane):
     def update_win(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
-            item = self._view[i]
+            item = self.items[i]
 
             val = get_tag('title', item) or os.path.basename(item.get('file'))
 
@@ -1556,7 +1557,7 @@ class Ncmpy():
     def _init_conf(self):
         '''Initialize internal configurations.'''
 
-        # main configuration
+        # Main configuration.
         self.height, self.width = self.stdscr.getmaxyx()
         self.tpanename = 'Queue'
         self.loop = False
@@ -1568,21 +1569,23 @@ class Ncmpy():
         self.search = ''
         self.search_di = 0
         self.pending = []
+        self.timestamp = time.time()
 
-        # no sync keys
+        # No sync keys. Disable sync with MPD server when an nsk is pressed.
         self.nsks = [
+                ord('J'), ord('K'),
+                curses.KEY_UP, curses.KEY_DOWN, curses.KEY_LEFT, curses.KEY_RIGHT,
+                ]
+
+        # Partial sync keys. Reduce sync freqeuency with MPD server when a psk is pressed.
+        self.psks = [
                 ord('j'), ord('k'), ord('f'), ord('b'),
                 ord('H'), ord('M'), ord('L'), ord('g'), ord('G'),
                 curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4,
-                ord('/'), ord('?'), ord('n'), ord('N'),
-                -1
                 ]
-        # partial sync keys
-        self.psks = [
-                curses.KEY_UP, curses.KEY_DOWN, curses.KEY_LEFT, curses.KEY_RIGHT
-                ]
+        self.psk_cnt = 0
 
-        # user input
+        # User input.
         self.c = None
 
     def _init_data(self):
@@ -1861,23 +1864,37 @@ class Ncmpy():
             if c == ord('q'):
                 self.loop = False
                 return
+            elif c in self.nsks:
+                self.sync = False
+            elif c in self.psks:
+                if self.psk_cnt == 0:
+                    self.sync = True
+                    self.psk_cnt = 5    # Magic!
+                else:
+                    self.sync = False
+                    self.psk_cnt -= 1
+            else:
+                self.sync = True
         else:
             c = self.c = -1
+            self.sync = True
 
-        events = self.try_leave_idle()
-        self.board.clear()
+        if self.sync:
+            events = self.try_leave_idle()
+            self.board.clear()
 
-        if events and 'database' in events:
-            self.board['database-updated'] = None
+            if events and 'database' in events:
+                self.board['database-updated'] = None
 
-        if self.pending:
-            self.mpc.command_list_ok_begin()
-            for task in self.pending:
-                exec('self.mpc.' + task)
-            self.mpc.command_list_end()
-            self.pending = []
+            if self.pending:
+                self.mpc.command_list_ok_begin()
+                for task in self.pending:
+                    exec('self.mpc.' + task)
+                self.mpc.command_list_end()
+                self.pending = []
 
-        self.update_data()
+            self.update_data()
+
         self.round1(c)
         self.round2()
         self.update_win()
@@ -1909,6 +1926,7 @@ class Ncmpy():
             try:
                 responses = poll.poll(200)
                 if not responses:
+                    self.timestamp = time.time()
                     self.process('timeout')
                 else:
                     for fd, event in responses:
