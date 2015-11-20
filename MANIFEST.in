@@ -1,1 +1,1 @@
-include INSTALL MANIFEST.in
+include share/ncmpy.conf.example

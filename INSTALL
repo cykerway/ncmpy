@@ -1,4 +1,4 @@
-Install (just one step):
+Install (one step):
 
     python2 setup.py install --prefix=/usr
 
@@ -9,8 +9,8 @@ To start ncmpy, run:
 Main configuration file is /etc/ncmpy.conf
 Configuration sample is /usr/share/ncmpy/ncmpy.conf.example
 Edit and copy it to /etc/ncmpy.conf
-And you can also create a user-scope configuration file ~/.ncmpy/ncmpy.conf
+And you can also create a user-scope configuration file ~/.config/ncmpy/ncmpy.conf
 
-Default lyrics directory is ~/.ncmpy/lyrics
+Default lyrics directory is ~/.config/ncmpy/lyrics
 
 Enjoy!

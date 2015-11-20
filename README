@@ -1,25 +1,34 @@
-ncmpy - a [Python + Curses]-based MPD client.
+# ncmpy - A Curses-based MPD client written in Python
 
-Made by Cyker Way 2011.
+----
 
-Released under GPLv3.
+ncmpy is a Curses-based client for the [Music Player Daemon][mpd].
 
 Features:
 
     Playback control.
-    Playlist management.
-    Database management.
+    Queue control.
     Song rating.
+    Database control.
     Auto lyrics fetching and saving.
     Lyrics highlighting and OSD.
     Artist-Album view.
-    Search by tags in database.
-    Vim-like keybinding with single-hand manipulation.
+    Search by tags.
+    Output control.
+
 
 Install:
-    
+
     See INSTALL.
+
+License:
+
+    See LICENSE.
+
+----
 
 Acknowledgements:
 
     Lyrics plugin is adapted from ttplyrics: http://code.google.com/p/ttplyrics/
+
+[mpd]: http://musicpd.org/

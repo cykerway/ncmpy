@@ -1,30 +1,31 @@
 #!/usr/bin/python2
 
-from distutils.core import setup, Extension
+from setuptools import setup, find_packages
 import glob
 
 setup(
     name = 'ncmpy',
-    version = '1.0',
+    version = '1.1',
     author = 'Cyker Way',
     author_email = 'cykerway@gmail.com',
-    url = 'http://ncmpy.cykerway.com/',
-    description = 'A [Python + Curses]-based MPD client',
+    license = 'GPL3',
+    url = 'http://www.cykerway.com/projects/ncmpy',
+    description = 'A Curses-based MPD client written in Python',
     long_description = '''
-        ncmpy - a [Python + Curses]-based MPD client
+        ncmpy - a Curses-based MPD client written in Python
         ============================
 
-        ncmpy is an MPD client based on Curses. Besides:
+        ncmpy is a Curses-based MPD client. Features:
 
-            basic playback control,
-            playlist/database management,
-
-        it supports:
-
-            song rating,
-            auto lyrics fetching and saving,
-            lyrics highlighting and OSD,
-            searching by tags.
+            Playback control.
+            Queue control.
+            Song rating.
+            Database control.
+            Auto lyrics fetching and saving.
+            Lyrics highlighting and OSD.
+            Artist-Album view.
+            Search by tags.
+            Output control.
     ''',
     classifiers = [
         'Development Status :: 5 - Production/Stable',
@@ -33,13 +34,7 @@ setup(
         'Topic :: Multimedia :: Sound/Audio :: Players',
         'Programming Language :: Python :: 2.7',
         ],
-    license = 'GPL3',
-    requires = ['curses', 'httplib2', 'lxml', 'mpd', 'pyosd'],
-    packages = ['ncmpy'],
-    package_dir = {'ncmpy':'src'},
-    scripts = ['ncmpy'],
-    data_files = [
-        ('share/doc/ncmpy', ['INSTALL', 'README']),
-        ('share/ncmpy', glob.glob('share/*')),
-        ]
-    )
+    requires = ['curses', 'mpd', 'pyosd'],
+    packages=find_packages(),
+    scripts=glob.glob('scripts/*'),
+)
