@@ -47,6 +47,8 @@ class Ncmpy():
         curses.init_pair(3, curses.COLOR_YELLOW, -1)
         self.stdscr.keypad(1)
         self.stdscr.leaveok(1)
+        # Force a refresh. Otherwise strange things happen on first key press.
+        self.stdscr.refresh()
 
     def _init_mpd(self, host, port):
         self.mpc = mpd.MPDClient()
