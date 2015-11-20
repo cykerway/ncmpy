@@ -70,7 +70,8 @@ class Ncmpy():
         self.pending = []
         self.timestamp = time.time()
 
-        # No sync keys. Disable sync with MPD server when an nsk is pressed.
+        # No sync keys. These keys don't modify MPD server state and can be handled locally.
+        # Therefore we don't sync with MPD server when handling these keys.
         self.nsks = [
                 ord('j'), ord('k'), ord('f'), ord('b'),
                 ord('H'), ord('M'), ord('L'), ord('g'), ord('G'),
