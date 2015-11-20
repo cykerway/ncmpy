@@ -22,7 +22,7 @@ setup(
             Song rating.
             Database control.
             Auto lyrics fetching and saving.
-            Lyrics highlighting and OSD.
+            Lyrics highlighting.
             Artist-Album view.
             Search by tags.
             Output control.
@@ -34,7 +34,7 @@ setup(
         'Topic :: Multimedia :: Sound/Audio :: Players',
         'Programming Language :: Python :: 2.7',
         ],
-    requires = ['curses', 'mpd', 'pyosd'],
+    requires = ['curses', 'mpd'],
     packages=find_packages(),
     scripts=glob.glob('scripts/*'),
 )

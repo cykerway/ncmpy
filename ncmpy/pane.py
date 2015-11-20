@@ -6,7 +6,6 @@ import curses
 import locale
 import mpd
 import os
-import pyosd
 import threading
 import time
 
@@ -929,17 +928,6 @@ class LyricsPane(ScrollPane, threading.Thread):
         # auto-center
         self.auto_center = True
 
-        # osd engine
-        if conf.enable_osd:
-            self._osd = pyosd.osd(\
-                    font='-misc-droid sans mono-medium-r-normal--0-0-0-0-m-0-iso8859-1',
-                    colour='#FFFF00',
-                    align=pyosd.ALIGN_CENTER,
-                    pos=pyosd.POS_TOP,
-                    timeout=-1)
-            # remembered for osd
-            self._osdcur = -1
-
     def _transtag(self, tag):
         '''Transform tag into format used by lrc engine.'''
 
@@ -1026,8 +1014,6 @@ class LyricsPane(ScrollPane, threading.Thread):
                 else:
                     self._lyrics_state = 'saved'
 
-                if conf.enable_osd:
-                    self._osdcur = -1
             self._cv.release()
         else:
             self._ltimes, self._ltexts = [0], ['Updating...']
@@ -1050,14 +1036,6 @@ class LyricsPane(ScrollPane, threading.Thread):
             else:
                 self.win.insstr(i - self.beg, 0, self._ltexts[i])
         self.win.noutrefresh()
-
-        # osd lyrics if ENABLE_OSD is True
-        if conf.enable_osd:
-            if self.cur != self._osdcur:
-                self._osd.hide()
-                if self._ltexts:
-                    self._osd.display(self._ltexts[self.cur])
-                self._osdcur = self.cur
 
     def run(self):
         self._cv.acquire()

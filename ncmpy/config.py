@@ -13,7 +13,6 @@ class Config:
     def __init__(self):
         self.mpd_host = 'localhost'
         self.mpd_port = 6600
-        self.enable_osd = False
         self.enable_rating = True
         self.lyrics_dir = os.path.expanduser('~/.ncmpy/lyrics')
 
@@ -40,8 +39,6 @@ class Config:
                             self.mpd_host = a
                         elif o == 'MPD_PORT':
                             self.mpd_port = int(a)
-                        elif o == 'ENABLE_OSD':
-                            self.enable_osd = a in ['True', 'true', 'Yes', 'yes', '1']
                         elif o == 'ENABLE_RATING':
                             self.enable_rating = a in ['True', 'true', 'Yes', 'yes', '1']
                         elif o == 'LYRICS_DIR':

@@ -305,9 +305,6 @@ class Ncmpy():
             pane.round2()
 
     def update_win(self):
-        if conf.enable_osd:
-            self.l.update_win()
-
         self.pdict[self.tpanename].update_win()
 
         for pane in self.bplist:
