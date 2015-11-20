@@ -467,6 +467,7 @@ class HelpPane(ScrollPane):
                 ('item', '\'', 'toggle auto center'),
                 ('item', ';', 'locate selected song in database'),
                 ('blank', None, None),
+                ('item', 'x', 'remove song rating'),
                 ('item', '1', 'rate selected song as     *'),
                 ('item', '2', 'rate selected song as    **'),
                 ('item', '3', 'rate selected song as   ***'),
