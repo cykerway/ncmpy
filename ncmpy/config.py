@@ -3,14 +3,9 @@
 '''Config module.'''
 
 import os
+import sys
 
 from ncmpy.util import printerr
-
-# conf files listed in order.
-CONFIG_FILES = [
-        os.path.expanduser('~/.config/ncmpy/ncmpy.conf'),
-        '/etc/ncmpy.conf'
-        ]
 
 class Config:
     '''Config class.'''
@@ -22,10 +17,10 @@ class Config:
         self.enable_rating = True
         self.lyrics_dir = os.path.expanduser('~/.ncmpy/lyrics')
 
-    def read(self):
-        '''Read configurations from file.'''
-
-        for filename in CONFIG_FILES:
+        for filename in (
+                os.path.expanduser('~/.config/ncmpy/ncmpy.conf'),
+                '/etc/ncmpy.conf',
+                ):
 
             if not os.path.isfile(filename):
                 continue
@@ -55,5 +50,9 @@ class Config:
                             raise
                     except:
                         printerr('Invalid line {} in config file {}'.format(line_num, filename))
+                        sys.exit(1)
             break
+
+# Global configuration.
+conf = Config()
 
