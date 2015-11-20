@@ -2,7 +2,7 @@
 # Maintainer:  Cyker Way <cykerway at gmail dot com>
 
 pkgname=ncmpy
-pkgver=1.2
+pkgver=1.4
 pkgrel=1
 pkgdesc="A curses-based MPD client written in Python."
 arch=('i686' 'x86_64')

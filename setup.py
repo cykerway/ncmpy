@@ -5,7 +5,7 @@ import glob
 
 setup(
     name = 'ncmpy',
-    version = '1.2',
+    version = '1.4',
     author = 'Cyker Way',
     author_email = 'cykerway@gmail.com',
     license = 'GPL3',
