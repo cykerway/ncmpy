@@ -197,12 +197,18 @@ class Ncmpy():
         # Volume control.
         if c == ord('9'):
             new_vol = max(int(self.status['volume']) - 1, 0)
-            self.mpc.setvol(new_vol)
-            self.status['volume'] = str(new_vol)
+            try:
+                self.mpc.setvol(new_vol)
+                self.status['volume'] = str(new_vol)
+            except mpd.CommandError as e:
+                self.board['msg'] = str(e)
         elif c == ord('0'):
             new_vol = min(int(self.status['volume']) + 1, 100)
-            self.mpc.setvol(new_vol)
-            self.status['volume'] = str(new_vol)
+            try:
+                self.mpc.setvol(new_vol)
+                self.status['volume'] = str(new_vol)
+            except mpd.CommandError as e:
+                self.board['msg'] = str(e)
 
         # Playback control.
         elif c == ord(' '):
