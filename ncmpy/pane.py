@@ -655,17 +655,20 @@ class QueuePane(CursedPane):
         elif c in range(ord('1'), ord('5') + 1):
             if conf.enable_rating:
                 rating = c - ord('0')
-                song = self.queue[self.cur]
-                self.mpc.sticker_set('song', song['file'], 'rating', rating)
-                song['rating'] = rating
+                if 0 <= self.cur and self.cur < len(self.queue):
+                    song = self.queue[self.cur]
+                    self.mpc.sticker_set('song', song['file'], 'rating', rating)
+                    song['rating'] = rating
         elif c == ord('x'):
             if conf.enable_rating:
-                song = self.queue[self.cur]
-                try:
-                    self.mpc.sticker_delete('song', song['file'], 'rating')
-                except mpd.CommandError:
-                    pass
-                song['rating'] = 0
+                if 0 <= self.cur and self.cur < len(self.queue):
+                    song = self.queue[self.cur]
+                    try:
+                        self.mpc.sticker_delete('song', song['file'], 'rating')
+                    except mpd.CommandError as e:
+                        self.board['msg'] = str(e)
+                    else:
+                        song['rating'] = 0
         elif c in [ord('/'), ord('?'), ord('n'), ord('N')]:
             self.search('Queue', c)
         elif c == ord('\''):
