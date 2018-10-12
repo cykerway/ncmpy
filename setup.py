@@ -5,11 +5,9 @@ import glob
 
 setup(
     name = 'ncmpy',
-    version = '1.4',
+    version = '1.4.0',
     author = 'Cyker Way',
-    author_email = 'cykerway@gmail.com',
-    license = 'GPL3',
-    url = 'http://www.cykerway.com/projects/ncmpy',
+    url = 'https://repo.cykerway.com/ncmpy',
     description = 'A curses-based MPD client written in Python.',
     long_description = '''
         ncmpy - A curses-based MPD client written in Python
@@ -30,11 +28,14 @@ setup(
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: End Users/Desktop',
-        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Topic :: Multimedia :: Sound/Audio :: Players',
         'Programming Language :: Python :: 2.7',
         ],
     requires = ['curses', 'mpd'],
     packages=find_packages(),
     scripts=glob.glob('scripts/*'),
+    project_urls={
+        'Source': 'https://github.com/cykerway/ncmpy',
+    },
 )
