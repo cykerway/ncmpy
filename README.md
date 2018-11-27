@@ -16,10 +16,25 @@
 -   Search by tags.
 -   Output control.
 
+## One-Step Install
 
-## Install
+To install ncmpy, run:
 
-See INSTALL.
+    python2 setup.py install --prefix=/usr
+
+To start ncmpy, run:
+
+    ncmpy
+
+## Configuration Files
+
+System configuration file is /etc/ncmpy.conf.
+
+User configuration file is ~/.config/ncmpy/ncmpy.conf.
+
+Configuration sample is /usr/share/ncmpy/ncmpy.conf.example.
+
+Enjoy!
 
 ## License
 
