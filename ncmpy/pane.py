@@ -116,8 +116,8 @@ class ScrollPane(BlockPane):
     def locate(self, pos):
         '''Select pos, and put in the center.'''
 
-        if pos >= self.height / 2:
-            self.beg = pos - self.height / 2
+        if pos >= self.height // 2:
+            self.beg = pos - self.height // 2
         else:
             self.beg = 0
 
@@ -168,7 +168,7 @@ class CursedPane(BlockPane):
         self.sel = self.beg
 
     def select_middle(self):
-        self.sel = min(self.beg + self.height / 2, self.num - 1)
+        self.sel = min(self.beg + self.height // 2, self.num - 1)
 
     def select_bottom(self):
         self.sel = min(self.beg + self.height - 1, self.num - 1)
@@ -184,8 +184,8 @@ class CursedPane(BlockPane):
     def locate(self, pos):
         '''Select pos, and put in the center.'''
 
-        if pos >= self.height / 2:
-            self.beg = pos - self.height / 2
+        if pos >= self.height // 2:
+            self.beg = pos - self.height // 2
         else:
             self.beg = 0
         self.sel = pos
@@ -346,7 +346,7 @@ class StatusPane(BarPane):
         tm = self.status.get('time') or '0:0'
         elapsed, total = map(int, tm.split(':'))
         elapsed_mm, elapsed_ss, total_mm, total_ss = \
-                elapsed / 60, elapsed % 60, total / 60, total % 60
+                elapsed // 60, elapsed % 60, total // 60, total % 60
         return '[{0}:{1:02d} ~ {2}:{3:02d}]'.format(elapsed_mm, elapsed_ss, total_mm, total_ss)
 
     def update_win(self):

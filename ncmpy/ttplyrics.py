@@ -53,26 +53,26 @@ def CodeFunc(Id, data):
 
     i=length-1
     while(i >= 0):
-        char = ord(data[i])
+        char = (data[i])
         if char >= 0x80:
             char = char - 0x100
         tmp1 = (char + tmp2) & 0x00000000FFFFFFFF
         tmp2 = (tmp2 << (i%2 + 4)) & 0x00000000FFFFFFFF
         tmp2 = (tmp1 + tmp2) & 0x00000000FFFFFFFF
-        #tmp2 = (ord(data[i])) + tmp2 + ((tmp2 << (i%2 + 4)) & 0x00000000FFFFFFFF)
+        #tmp2 = ((data[i])) + tmp2 + ((tmp2 << (i%2 + 4)) & 0x00000000FFFFFFFF)
         i -= 1
 
     #tmp2 88203cc2
     i=0
     tmp1=0
     while(i<=length-1):
-        char = ord(data[i])
+        char = (data[i])
         if char >= 128:
             char = char - 256
         tmp7 = (char + tmp1) & 0x00000000FFFFFFFF
         tmp1 = (tmp1 << (i%2 + 3)) & 0x00000000FFFFFFFF
         tmp1 = (tmp1 + tmp7) & 0x00000000FFFFFFFF
-        #tmp1 = (ord(data[i])) + tmp1 + ((tmp1 << (i%2 + 3)) & 0x00000000FFFFFFFF)
+        #tmp1 = ((data[i])) + tmp1 + ((tmp1 << (i%2 + 3)) & 0x00000000FFFFFFFF)
         i += 1
 
     #EBX 5CC0B3BA
@@ -90,16 +90,13 @@ def EncodeArtTit(str):
     rtn = ''
     str = str.encode('UTF-16')[2:]
     for i in range(len(str)):
-        rtn += '%02x' % ord(str[i])
+        rtn += '%02x' % (str[i])
 
     return rtn
 
 def fetch_lyrics(artist, title):
     # fixed headers
     headers =  {'User-agent' : 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)'}
-
-    artist = artist.decode('UTF-8')
-    title = title.decode('UTF-8')
 
     try:
         url = 'http://ttlrcct2.qianqian.com/dll/lyricsvr.dll?sh?Artist={}&Title={}&Flags=0'.format(

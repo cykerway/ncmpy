@@ -185,9 +185,9 @@ class Ncmpy():
                 elif c == curses.KEY_RIGHT:
                     self.elapsed = min(self.elapsed + 1, self.total)
                 elif c == curses.KEY_DOWN:
-                    self.elapsed = max(self.elapsed - max(self.total / 100, 1), 0)
+                    self.elapsed = max(self.elapsed - max(self.total // 100, 1), 0)
                 elif c == curses.KEY_UP:
-                    self.elapsed = min(self.elapsed + max(self.total / 100, 1), self.total)
+                    self.elapsed = min(self.elapsed + max(self.total // 100, 1), self.total)
                 self.status['time'] = '{}:{}'.format(self.elapsed, self.total)
         else:
             if self.seek:
@@ -338,7 +338,7 @@ class Ncmpy():
         Return Value: Events received in idle state.
         '''
 
-        self.mpc.send_noidle()
+        self.mpc.noidle()
         self.idle = False
 
         try:
