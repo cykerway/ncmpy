@@ -223,7 +223,7 @@ class CursedPane(BlockPane):
                 if panename in ['Queue', 'Search']:
                     title = get_tag('title', item) or os.path.basename(item['file'])
                 elif panename == 'Database':
-                    title = item.values()[0]
+                    title = list(item.values())[0]
                 elif panename == 'Artist-Album':
                     if self._type in ['artist', 'album']:
                         title = item
