@@ -1,4 +1,4 @@
-#! /usr/bin/python2
+#!/usr/bin/env python3
 # -*- Mode: python; coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*-
 #
 # Copyright 2007 Sevenever

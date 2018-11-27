@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python3
 #
 # ncmpy - A curses-based MPD client written in Python.
 #
