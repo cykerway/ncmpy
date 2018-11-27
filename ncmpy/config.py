@@ -18,7 +18,7 @@ class Config:
 
         for filename in (
                 os.path.expanduser('~/.config/ncmpy/ncmpy.conf'),
-                '/etc/ncmpy.conf',
+                '/etc/ncmpy/ncmpy.conf',
                 ):
 
             if not os.path.isfile(filename):

@@ -1,3 +1,8 @@
+# this is ncmpy config file; copy to either of these locations:
+#
+# - system config: /etc/ncmpy/ncmpy.conf;
+# - user config: ~/.config/ncmpy/ncmpy.conf;
+
 # MPD host and port.
 MPD_HOST=localhost
 MPD_PORT=6600

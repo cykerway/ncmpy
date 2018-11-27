@@ -1,50 +1,62 @@
-# ncmpy - A curses-based MPD client written in Python
+# ncmpy
 
-----
+ncmpy is a terminal [mpd][] client;
 
-**ncmpy** is a curses-based client for the [Music Player Daemon][mpd].
+ncmpy features:
 
-## Features
+-   playback control;
 
--   Playback control.
--   Queue control.
--   Song rating.
--   Database control.
--   Auto lyrics fetching and saving.
--   Lyrics highlighting.
--   Artist-Album view.
--   Search by tags.
--   Output control.
+-   queue control;
 
-## One-Step Install
+-   song rating;
 
-To install ncmpy, run:
+-   database control;
 
-    python2 setup.py install --prefix=/usr
+-   auto lyrics fetching and saving;
 
-To start ncmpy, run:
+-   lyrics highlighting;
+
+-   artist-album view;
+
+-   search by tags;
+
+-   output control;
+
+## install
+
+install using pip:
+
+    pip install ncmpy
+
+## usage
+
+ncmpy provides a curses interface; so you can run it interactively:
 
     ncmpy
 
-## Configuration Files
+## config
 
-System configuration file is /etc/ncmpy.conf.
+-   system config file: `/etc/ncmpy/ncmpy.conf`;
 
-User configuration file is ~/.config/ncmpy/ncmpy.conf.
+-   user config file: `~/.config/ncmpy/ncmpy.conf`;
 
-Configuration sample is /usr/share/ncmpy/ncmpy.conf.example.
+a config file sample is provided: `data/ncmpy.conf.example`;
 
-Enjoy!
+## license
 
-## License
+Copyright (c) 2018 Cyker Way
 
-See LICENSE.
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
 
-----
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-## Acknowledgements
-
-Lyrics plugin is adapted from ttplyrics: http://code.google.com/p/ttplyrics/
-
+You should have received a copy of the GNU General Public License along with
+this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [mpd]: http://musicpd.org/
+
