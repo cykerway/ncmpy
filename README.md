@@ -1,6 +1,6 @@
 # ncmpy
 
-ncmpy is a terminal [mpd][] client;
+ncmpy is a curses [mpd][] client;
 
 ncmpy features:
 

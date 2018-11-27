@@ -81,7 +81,7 @@ setup(
     ##
     ##  <https://packaging.python.org/specifications/core-metadata/#summary>
     ##
-    description='a terminal mpd client;',
+    description='a curses mpd client;',
 
     ##  a longer description shown on project homepage on pypi;
     ##
