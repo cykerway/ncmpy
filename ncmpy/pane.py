@@ -383,7 +383,7 @@ class MessagePane(BarPane):
         curses.curs_set(0)
         curses.noecho()
         curses.cbreak()
-        return s
+        return s.decode()
 
     def update_win(self):
         msg = self.board.get('msg')
