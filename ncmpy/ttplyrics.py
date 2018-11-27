@@ -131,7 +131,7 @@ def fetch_lyrics(artist, title):
         except IOError:
             return '[00:00.00]Lyrics not found.'
         else:
-            return handle.read()
+            return handle.read().decode()
 
 if __name__ == '__main__':
     print(fetch_lyrics(sys.argv[1], sys.argv[2]))
