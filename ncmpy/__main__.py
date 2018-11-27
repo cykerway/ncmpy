@@ -17,7 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-'''ncmpy - A curses-based MPD client written in Python.'''
+'''
+main module;
+'''
 
 import curses
 import locale
@@ -302,10 +304,10 @@ class Ncmpy():
             self.tpanename = 'Output'
 
     def round2(self):
-        if self.board.has_key('database-locate'):
+        if ('database-locate' in self.board):
             self.tpanename = 'Database'
 
-        if self.board.has_key('queue-locate'):
+        if ('queue-locate' in self.board):
             self.tpanename = 'Queue'
 
         for pane in self.plist:
@@ -438,7 +440,11 @@ class Ncmpy():
             # Consume KEY_RESIZE and update.
             self.process('stdin')
 
-if __name__ == '__main__':
+def main():
+
+    '''
+    main function;
+    '''
 
     try:
         locale.setlocale(locale.LC_ALL,'')
@@ -451,4 +457,7 @@ if __name__ == '__main__':
             ncmpy.main_loop()
     finally:
         curses.endwin()
+
+if __name__ == '__main__':
+    main()
 

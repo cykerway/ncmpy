@@ -90,24 +90,24 @@ def test():
     with open('./test.lrc', 'rt') as f:
         s = f.read()
 
-    print 'module method (no compile)'
+    print('module method (no compile)')
     lrc = compile(s)
-    print 'artist = ', lrc.get_artist()
-    print 'title = ', lrc.get_title()
-    print 'album = ', lrc.get_album()
-    print 'by = ', lrc.get_by()
+    print('artist = ', lrc.get_artist())
+    print('title = ', lrc.get_title())
+    print('album = ', lrc.get_album())
+    print('by = ', lrc.get_by())
     texts = lrc.get_text()
     for text in texts:
-        print text
+        print(text)
 
-    print 'class method (compile)'
-    print 'artist = ', get_artist(s)
-    print 'title = ', get_title(s)
-    print 'album = ', get_album(s)
-    print 'by = ', get_by(s)
+    print('class method (compile)')
+    print('artist = ', get_artist(s))
+    print('title = ', get_title(s))
+    print('album = ', get_album(s))
+    print('by = ', get_by(s))
     texts = get_text(s)
     for text in texts:
-        print text
+        print(text)
 
 
 if __name__ == '__main__':

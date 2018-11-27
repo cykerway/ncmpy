@@ -22,7 +22,8 @@
 import sys
 import locale
 import codecs
-import urllib2
+from urllib.request import urlopen
+from urllib.request import Request
 import random
 from xml.dom.minidom import parse, parseString
 
@@ -105,8 +106,8 @@ def fetch_lyrics(artist, title):
                 EncodeArtTit(artist.replace(' ','').lower()),
                 EncodeArtTit(title.replace(' ','').lower()),
                 )
-        req = urllib2.Request(url, None, headers)
-        handle = urllib2.urlopen(req)
+        req = Request(url, None, headers)
+        handle = urlopen(req)
     except IOError:
         return '[00:00.00]Lyrics fetching failed.'
     else:
@@ -127,8 +128,8 @@ def fetch_lyrics(artist, title):
                     CodeFunc(int(li[0]), (li[1] + li[2]).encode('UTF-8')),
                     random.randint(0,0xFFFFFFFFFFFF)
                     )
-            req = urllib2.Request(url, None, headers)
-            handle = urllib2.urlopen(req)
+            req = Request(url, None, headers)
+            handle = urlopen(req)
             # and open it to return a handle on the url
         except IOError:
             return '[00:00.00]Lyrics not found.'
@@ -136,5 +137,5 @@ def fetch_lyrics(artist, title):
             return handle.read()
 
 if __name__ == '__main__':
-    print fetch_lyrics(sys.argv[1], sys.argv[2])
+    print(fetch_lyrics(sys.argv[1], sys.argv[2]))
 
