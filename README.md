@@ -24,23 +24,19 @@ ncmpy features:
 
 ## install
 
-install using pip:
-
     pip install ncmpy
 
 ## usage
-
-ncmpy provides a curses interface; so you can run it interactively:
 
     ncmpy
 
 ## config
 
--   system config file: `/etc/ncmpy/ncmpy.conf`;
+-   system config file: `/etc/ncmpy/ncmpy.yaml`;
 
--   user config file: `~/.config/ncmpy/ncmpy.conf`;
+-   user config file: `~/.config/ncmpy/ncmpy.yaml`;
 
-a config file sample is provided: `data/ncmpy.conf.example`;
+a config file sample is provided: `data/ncmpy.yaml.example`;
 
 ## license
 

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-'''Util module.'''
-
-import sys
-
-def printerr(s):
-    sys.stderr.write(s + '\n')
+'''
+util module;
+'''
 
 def format_time(tm):
-    '''Convert time: <seconds> -> <hh:mm:ss>.'''
+
+    '''
+    convert time: <seconds> -> <hh:mm:ss>;
+    '''
 
     if tm.isdigit():
         tm = int(tm)
@@ -18,6 +18,7 @@ def format_time(tm):
         return ''
 
 def get_tag(tagname, item):
+
     tag = item.get(tagname)
     if isinstance(tag, str):
         return tag

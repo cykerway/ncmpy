@@ -1,26 +1,10 @@
 #!/usr/bin/env python3
-#
-# ncmpy - A curses-based MPD client written in Python.
-#
-# Copyright (C) 2011-2015 Cyker Way
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 '''
 main module;
 '''
 
+from curses import wrapper
 import curses
 import locale
 import mpd
@@ -30,386 +14,453 @@ import signal
 import sys
 import time
 
-from ncmpy.config import *
+from ncmpy.config import conf
+from ncmpy.keysym import keysym as ks
 from ncmpy.pane import *
-from ncmpy.util import *
 
 class Ncmpy():
-    '''Main controller.'''
 
-    def _init_curses(self):
-        self.stdscr = curses.initscr()
-        curses.start_color()
-        curses.use_default_colors()
-        curses.noecho()
-        curses.cbreak()
-        curses.curs_set(0)
-        curses.init_pair(1, curses.COLOR_BLUE, -1)
-        curses.init_pair(2, curses.COLOR_GREEN, -1)
-        curses.init_pair(3, curses.COLOR_YELLOW, -1)
-        self.stdscr.keypad(1)
-        self.stdscr.leaveok(1)
-        # Force a refresh. Otherwise strange things happen on first key press.
-        self.stdscr.refresh()
+    '''
+    main class;
+    '''
 
     def _init_mpd(self, host, port):
+
+        ##  connect to mpd;
         self.mpc = mpd.MPDClient()
         self.mpc.connect(host, port)
 
-    def _init_conf(self):
-        '''Initialize internal configurations.'''
-
-        # Main configuration.
-        self.height, self.width = self.stdscr.getmaxyx()
-        self.tpanename = 'Queue'
-        self.loop = False
-        self.idle = False
-        self.seek = False
-        self.sync = True
-        self.elapsed = 0
-        self.total = 0
-        self.search = ''
-        self.search_di = 0
-        self.pending = []
-
-        # No sync keys. These keys don't modify MPD server state and can be handled locally.
-        # Therefore we don't sync with MPD server when handling these keys.
-        self.nsks = [
-                ord('j'), ord('k'), ord('f'), ord('b'),
-                ord('H'), ord('M'), ord('L'), ord('g'), ord('G'),
-                ord('J'), ord('K'),
-                curses.KEY_UP, curses.KEY_DOWN, curses.KEY_LEFT, curses.KEY_RIGHT,
-                ]
-
-        # User input.
-        self.c = None
-
-    def _init_data(self):
+        ##  fetch server status;
         self.status = self.mpc.status()
         self.stats = self.mpc.stats()
         self.currentsong = self.mpc.currentsong()
 
-    def _init_board(self):
-        self.board = {}
+    def _init_curses(self, stdscr):
+
+        ##  hide cursor;
+        curses.curs_set(0)
+
+        ##  init colors;
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_BLUE, -1)
+        curses.init_pair(2, curses.COLOR_GREEN, -1)
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)
+
+        ##  store main window and its size;
+        self.stdscr = stdscr
+        self.height, self.width = self.stdscr.getmaxyx()
 
     def _init_panes(self):
-        '''Initialize panes.'''
 
-        self.m = MenuPane(self.stdscr.subwin(1, self.width, 0, 0), self)
-        self.t = LinePane(self.stdscr.subwin(1, self.width, 1, 0), self)
+        ##  create panes;
+        self.menu_pane = MenuPane(
+            'Menu',
+            curses.newwin(1, self.width, 0, 0), self)
+        self.title_pane = TitlePane(
+            'Title',
+            curses.newwin(1, self.width, 1, 0), self)
+        self.progress_pane = ProgressPane(
+            'Progress',
+            curses.newwin(1, self.width, self.height - 2, 0), self)
+        self.status_pane = StatusPane(
+            'Status',
+            curses.newwin(1, self.width, self.height - 1, 0), self)
+        self.message_pane = MessagePane(
+            'Message',
+            curses.newwin(1, self.width, self.height - 1, 0), self)
+        self.help_pane = HelpPane(
+            'Help',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.queue_pane = QueuePane(
+            'Queue',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.database_pane = DatabasePane(
+            'Database',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.lyrics_pane = LyricsPane(
+            'Lyrics',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.artist_album_pane = ArtistAlbumPane(
+            'Artist-Album',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.search_pane = SearchPane(
+            'Search',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.info_pane = InfoPane(
+            'Info',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
+        self.output_pane = OutputPane(
+            'Output',
+            curses.newwin(self.height - 4, self.width, 2, 0), self)
 
-        self.p = ProgressPane(self.stdscr.subwin(1, self.width, self.height - 2, 0), self)
-        self.s = StatusPane(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
-        self.e = MessagePane(self.stdscr.subwin(1, self.width, self.height - 1, 0), self)
+        ##  pane list;
+        self.panes = [
+            self.menu_pane,
+            self.title_pane,
+            self.progress_pane,
+            self.status_pane,
+            self.message_pane,
+            self.help_pane,
+            self.queue_pane,
+            self.database_pane,
+            self.lyrics_pane,
+            self.artist_album_pane,
+            self.search_pane,
+            self.info_pane,
+            self.output_pane,
+        ]
 
-        self.h = HelpPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.q = QueuePane(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.d = DatabasePane(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.l = LyricsPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.a = ArtistAlbumPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.r = SearchPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.i = InfoPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
-        self.o = OutputPane(curses.newwin(self.height - 4, self.width, 2, 0), self)
+        ##  current pane;
+        self.cpane = self.queue_pane
 
-        # Pane dict.
-        self.pdict = {
-                'Menu' : self.m,
-                'Title' : self.t,
-                'Progress' : self.p,
-                'Status' : self.s,
-                'Message' : self.e,
+        ##  prev pane;
+        self.ppane = None
 
-                'Help' : self.h,
-                'Queue' : self.q,
-                'Database' : self.d,
-                'Lyrics' : self.l,
-                'Artist-Album' : self.a,
-                'Search' : self.r,
-                'Info' : self.i,
-                'Output' : self.o,
-                }
-        # Pane list.
-        self.plist = self.pdict.values()
+    def __init__(self, stdscr):
 
-        # Bar pane dict.
-        self.bpdict = {
-                'Menu' : self.m,
-                'Title' : self.t,
-                'Progress' : self.p,
-                'Status' : self.s,
-                'Message' : self.e,
-                }
-        # Bar pane list.
-        self.bplist = self.bpdict.values()
+        ##  loop flag;
+        ##
+        ##  `True` iff in main loop;
+        self.loop = False
 
-    def __enter__(self):
-        self._init_curses()
+        ##  idle flag;
+        ##
+        ##  `python-mpd2` requires calling `send_idle` before calling `noidle`,
+        ##  so we cannot call `noidle` twice; also, we cannot call `send_idle`
+        ##  twice, which would reset connection; thus, we must call `send_idle`
+        ##  and `noidle` one after the other:
+        ##
+        ##      send_idle -> noidle -> send_idle -> noidle -> ...
+        ##
+        ##  the `idle` flag tracks which of these 2 commands was called last;
+        ##  note that calling `send_idle` doesnt guarantee mpd server will be
+        ##  put in idle state: if there were changes before calling `send_idle`,
+        ##  then mpd server will reply with those changes immediately; that is
+        ##  to say, `idle == True` doesnt guarantee mpd server is idle; but
+        ##  `idle == False` does guarantee mpd server is not idle;
+        self.idle = False
+
+        ##  seek flag;
+        ##
+        ##  for performance reason, we update elapsed time on the client side
+        ##  after user pressed a seek key, and only send it to mpd server on the
+        ##  next non-seek (including timeout) event;
+        ##
+        ##  the `seek` flag is `True` iff we have a pending seek: after user
+        ##  pressed a seek key and before elapsed time is sent to server;
+        self.seek = False
+
+        ##  elapsed time;
+        self.elapsed = 0
+
+        ##  total time;
+        self.total = 0
+
+        ##  search keyword;
+        self.search_kw = ''
+
+        ##  search direction;
+        self.search_dr = 0
+
+        ##  pending mpd commands for batch processing;
+        self.batch = []
+
+        ##  message board for inter-pane communication;
+        self.ipc = {}
+
+        ##  local keysyms; these keys dont modify mpd server state and thus are
+        ##  handled locally; dont sync with mpd server when handling these keys;
+        self.local_keysyms = [
+            ##  these keysyms are truly local; they really dont send command to
+            ##  server;
+            ks.linedn, ks.lineup, ks.pagedn, ks.pageup,
+            ks.top, ks.middle, ks.bottom,
+            ks.first, ks.last,
+
+            ##  these keysyms are pseudo-local; they actually send command to
+            ##  server, but not immediately after we press them;
+            ks.swapdn, ks.swapup,
+            ks.seekb, ks.seekf, ks.seekbp, ks.seekfp,
+        ]
+
+        ##  seek keysyms;
+        self.seek_keysyms = [
+            ks.seekb, ks.seekf, ks.seekbp, ks.seekfp,
+        ]
+
+        ##  init mpd and curses;
         self._init_mpd(conf.mpd_host, conf.mpd_port)
-        self._init_conf()
-        self._init_data()
-        self._init_board()
+        self._init_curses(stdscr)
         self._init_panes()
 
-        # start lyrics daemon thread
-        self.l.daemon = True
-        self.l.start()
+        ##  start lyrics thread;
+        ##
+        ##  todo: move thread out of the pane;
+        self.lyrics_pane.start()
 
-        # initial update
-        self.process('timeout')
+        ##  setup signal handler;
+        signal.signal(signal.SIGWINCH, self.handler)
 
-        return self
+        ##  initial update;
+        self.on_event('timeout')
 
-    def __exit__(self, type, value, traceback):
+    def fetch(self):
 
-        curses.endwin()
+        '''
+        fetch data;
+        '''
 
-    def update_data(self):
-        # Update data from MPD.
         self.status = self.mpc.status()
         self.stats = self.mpc.stats()
         self.currentsong = self.mpc.currentsong()
 
-        # Update panes data.
-        for pane in self.plist:
-            pane.update_data()
+        for pane in self.panes:
+            pane.fetch()
 
-    def round1(self, c):
-        # Seeking.
-        if c in (curses.KEY_LEFT, curses.KEY_RIGHT, curses.KEY_DOWN, curses.KEY_UP):
-            if self.status['state'] in ['play', 'pause']:
+    def round0(self):
+
+        '''
+        round 0;
+        '''
+
+        ##  seek;
+        if self.status['state'] in [ 'play', 'pause' ]:
+
+            if self.ch in self.seek_keysyms:
+                ##  enter seek mode;
                 if not self.seek:
+                    self.elapsed, self.total = [
+                        int(i) for i in self.status['time'].split(':')
+                    ]
                     self.seek = True
-                    self.elapsed, self.total = [int(i) for i in self.status['time'].split(':')]
-                if c == curses.KEY_LEFT:
-                    self.elapsed = max(self.elapsed - 1, 0)
-                elif c == curses.KEY_RIGHT:
-                    self.elapsed = min(self.elapsed + 1, self.total)
-                elif c == curses.KEY_DOWN:
-                    self.elapsed = max(self.elapsed - max(self.total // 100, 1), 0)
-                elif c == curses.KEY_UP:
-                    self.elapsed = min(self.elapsed + max(self.total // 100, 1), self.total)
-                self.status['time'] = '{}:{}'.format(self.elapsed, self.total)
-        else:
+
+                change = {
+                    ks.seekb    : - 1,
+                    ks.seekf    : + 1,
+                    ks.seekbp   : - max(1, self.total // 100),
+                    ks.seekfp   : + max(1, self.total // 100),
+                }[self.ch]
+                self.elapsed = max(0, min(self.total, self.elapsed + change))
+
             if self.seek:
-                if self.status['state'] in ['play', 'pause']:
-                    self.mpc.seekid(self.status['songid'], self.elapsed)
-                self.seek = False
+                ##  overwrite playback time in seek mode;
                 self.status['time'] = '{}:{}'.format(self.elapsed, self.total)
 
-        # Volume control.
-        if c == ord('9'):
-            new_vol = max(int(self.status['volume']) - 1, 0)
-            try:
-                self.mpc.setvol(new_vol)
-                self.status['volume'] = str(new_vol)
-            except mpd.CommandError as e:
-                self.board['msg'] = str(e)
-        elif c == ord('0'):
-            new_vol = min(int(self.status['volume']) + 1, 100)
-            try:
-                self.mpc.setvol(new_vol)
-                self.status['volume'] = str(new_vol)
-            except mpd.CommandError as e:
-                self.board['msg'] = str(e)
+                if self.ch not in self.local_keysyms:
+                    ##  send seek command to server and leave seek mode;
+                    self.mpc.seekid(self.status['songid'], self.elapsed)
+                    self.seek = False
 
-        # Playback control.
-        elif c == ord(' '):
+        ##  volume control;
+        if self.ch == ks.voldn:
+            new_vol = max(0, int(self.status['volume']) - 1)
+            try:
+                self.mpc.setvol(new_vol)
+                self.status['volume'] = str(new_vol)
+            except mpd.CommandError as e:
+                self.ipc['msg'] = str(e)
+        elif self.ch == ks.volup:
+            new_vol = min(100, int(self.status['volume']) + 1)
+            try:
+                self.mpc.setvol(new_vol)
+                self.status['volume'] = str(new_vol)
+            except mpd.CommandError as e:
+                self.ipc['msg'] = str(e)
+
+        ##  playback control;
+        elif self.ch == ks.pause:
             self.mpc.pause()
-        elif c == ord('s'):
+        elif self.ch == ks.stop:
             self.mpc.stop()
-        elif c == ord('<'):
+        elif self.ch == ks.prev:
             self.mpc.previous()
-        elif c == ord('>'):
+        elif self.ch == ks.next:
             self.mpc.next()
 
-        # Mode control.
-        elif c == ord('u'):
-            self.status['consume'] = 1 - int(self.status['consume'])
+        ##  mode control;
+        elif self.ch == ks.consume:
+            self.status['consume'] = str(1 - int(self.status['consume']))
             self.mpc.consume(self.status['consume'])
-        elif c == ord('i'):
-            self.status['random'] = 1 - int(self.status['random'])
+        elif self.ch == ks.random:
+            self.status['random'] = str(1 - int(self.status['random']))
             self.mpc.random(self.status['random'])
-        elif c == ord('o'):
-            self.status['repeat'] = 1 - int(self.status['repeat'])
+        elif self.ch == ks.repeat:
+            self.status['repeat'] = str(1 - int(self.status['repeat']))
             self.mpc.repeat(self.status['repeat'])
-        elif c == ord('p'):
-            self.status['single'] = 1 - int(self.status['single'])
+        elif self.ch == ks.single:
+            self.status['single'] = str(1 - int(self.status['single']))
             self.mpc.single(self.status['single'])
 
-        # Playlist save/load.
-        elif c == ord('S'):
-            name = self.e.getstr('Save')
+        ##  playlist save & load;
+        elif self.ch == ks.savepl:
+            name = self.message_pane.getstr('Save')
             try:
                 self.mpc.save(name)
             except mpd.CommandError as e:
-                self.board['msg'] = str(e).rsplit('} ')[1]
+                self.ipc['msg'] = str(e).rsplit('} ')[1]
             else:
-                self.board['msg'] = 'Playlist {} saved'.format(name)
-                self.board['playlist'] = 'saved'
-        elif c == ord('O'):
-            name = self.e.getstr('Load')
+                self.ipc['msg'] = 'Playlist {} saved'.format(name)
+                self.ipc['playlist'] = 'saved'
+        elif self.ch == ks.loadpl:
+            name = self.message_pane.getstr('Load')
             try:
                 self.mpc.load(name)
             except mpd.CommandError as e:
-                self.board['msg'] = str(e).rsplit('} ')[1]
+                self.ipc['msg'] = str(e).rsplit('} ')[1]
             else:
-                self.board['msg'] = 'Playlist {} loaded'.format(name)
+                self.ipc['msg'] = 'Playlist {} loaded'.format(name)
 
-        # Basic search.
-        elif c in [ord('/'), ord('?')]:
-            search = self.e.getstr('Find')
-            if search:
-                self.search = search
-                if c == ord('/'):
-                    self.search_di = 1
-                elif c == ord('?'):
-                    self.search_di = -1
+        ##  basic search;
+        elif self.ch in [ ks.searchdn, ks.searchup ]:
+            search_kw = self.message_pane.getstr('Find')
+            if search_kw:
+                self.search_kw = search_kw
+                if self.ch == ks.searchdn:
+                    self.search_dr = 1
+                elif self.ch == ks.searchup:
+                    self.search_dr = -1
 
-        # Top pane do round1 with input char.
-        self.pdict[self.tpanename].round1(c)
+        ##  panes do round0;
+        for pane in self.panes:
+            pane.round0()
 
-        # Other panes do round1 without input char.
-        for panename in self.pdict:
-            if panename != self.tpanename:
-                self.pdict[panename].round1(-1)
+    def round1(self):
 
-        # Pane switch.
-        if c == curses.KEY_F1:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Help'
-        elif c == curses.KEY_F2:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Queue'
-        elif c == curses.KEY_F3:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Database'
-        elif c == curses.KEY_F4:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Lyrics'
-        elif c == curses.KEY_F5:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Artist-Album'
-        elif c == curses.KEY_F6:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Search'
-        elif c == curses.KEY_F7:
-            if self.tpanename == 'Info':
-                if self.prevtpanename:
-                    self.tpanename, self.prevtpanename = self.prevtpanename, self.tpanename
-            else:
-                self.prevtpanename = self.tpanename
-                self.tpanename = 'Info'
-        elif c == curses.KEY_F8:
-            self.prevtpanename = self.tpanename
-            self.tpanename = 'Output'
+        '''
+        round 1;
+        '''
 
-    def round2(self):
-        if ('database-locate' in self.board):
-            self.tpanename = 'Database'
+        ##  pane switch;
+        if self.ch == ks.panehelp:
+            self.ppane, self.cpane = self.cpane, self.help_pane
+        elif self.ch == ks.panequeue:
+            self.ppane, self.cpane = self.cpane, self.queue_pane
+        elif self.ch == ks.panedatabase:
+            self.ppane, self.cpane = self.cpane, self.database_pane
+        elif self.ch == ks.panelyrics:
+            self.ppane, self.cpane = self.cpane, self.lyrics_pane
+        elif self.ch == ks.paneartistalbum:
+            self.ppane, self.cpane = self.cpane, self.artist_album_pane
+        elif self.ch == ks.panesearch:
+            self.ppane, self.cpane = self.cpane, self.search_pane
+        elif self.ch == ks.paneinfo:
+            if self.cpane != self.info_pane:
+                self.ppane, self.cpane = self.cpane, self.info_pane
+            elif self.ppane:
+                self.ppane, self.cpane = self.cpane, self.ppane
+        elif self.ch == ks.paneoutput:
+            self.ppane, self.cpane = self.cpane, self.output_pane
+        elif 'database-locate' in self.ipc:
+            self.cpane = self.database_pane
+        elif 'queue-locate' in self.ipc:
+            self.cpane = self.queue_pane
 
-        if ('queue-locate' in self.board):
-            self.tpanename = 'Queue'
+        ##  panes do round1;
+        for pane in self.panes:
+            pane.round1()
 
-        for pane in self.plist:
-            pane.round2()
+    def update(self):
 
-    def update_win(self):
-        self.pdict[self.tpanename].update_win()
+        '''
+        update windows;
+        '''
 
-        for pane in self.bplist:
-            pane.update_win()
+        for pane in self.panes:
+            ##  update current pane and all bar panes;
+            if pane == self.cpane or isinstance(pane, BarPane):
+                pane.update()
 
         curses.doupdate()
 
-    def enter_idle(self):
+    def resize(self):
+
         '''
-        Enter idle state. Must be called outside idle state.
-
-        No return value.
+        resize windows; called in `SIGWINCH` handler;
         '''
-
-        self.mpc.send_idle()
-        self.idle = True
-
-    def leave_idle(self):
-        '''
-        Leave idle state. Must be called inside idle state.
-
-        Return Value: Events received in idle state.
-        '''
-
-        self.mpc.noidle()
-        self.idle = False
-
-        try:
-            return self.mpc.fetch_idle()
-        except mpd.PendingCommandError:
-            # Return None if nothing received.
-            return None
-
-    def try_enter_idle(self):
-        if not self.idle:
-            self.enter_idle()
-
-    def try_leave_idle(self):
-        if self.idle:
-            return self.leave_idle()
-
-    def process(self, fd):
-        '''Process timeout/mpd/stdin events. Called in main loop.'''
-
-        # Get input if event is 'stdin'.
-        if fd == 'stdin':
-            c = self.c = self.stdscr.getch()
-            if c == ord('q'):
-                self.loop = False
-                return
-            elif c in self.nsks:
-                self.sync = False
-            else:
-                self.sync = True
-        else:
-            c = self.c = -1
-            self.sync = True
-
-        self.board.clear()
-
-        if self.sync:
-            events = self.try_leave_idle()
-
-            if events and 'database' in events:
-                self.board['database-updated'] = None
-
-            if self.pending:
-                self.mpc.command_list_ok_begin()
-                for task in self.pending:
-                    exec('self.mpc.' + task)
-                self.mpc.command_list_end()
-                self.pending = []
-
-            self.update_data()
-
-        self.round1(c)
-        self.round2()
-        self.update_win()
-
-        if fd == 'stdin':
-            curses.flushinp()
-        else:
-            self.try_enter_idle()
-
-    def resize_win(self):
-        '''Reset display. Called in SIGWINCH handler.'''
 
         curses.endwin()
         self.stdscr.refresh()
         self.height, self.width = self.stdscr.getmaxyx()
 
-        for pane in self.plist:
-            pane.resize_win()
+        for pane in self.panes:
+            pane.resize()
+
+    def enter_idle(self):
+
+        '''
+        enter idle state;
+        '''
+
+        if not self.idle:
+            self.mpc.send_idle()
+            self.idle = True
+
+    def leave_idle(self):
+
+        '''
+        leave idle state;
+
+        ## return
+
+        :list
+        :   a list of changed sub systems;
+        '''
+
+        if self.idle:
+            subs = self.mpc.noidle()
+            self.idle = False
+            return subs
+        else:
+            return []
+
+    def on_event(self, type_):
+
+        '''
+        main loop event handler;
+
+        ## params
+
+        type_:str
+        :   event type: timeout, stdin, mpd;
+        '''
+
+        if type_ == 'stdin':
+            self.ch = self.stdscr.getch()
+            if self.ch == ks.quit:
+                self.loop = False
+                return
+            sync = (self.ch not in self.local_keysyms)
+        else:
+            self.ch = None
+            sync = True
+
+        self.ipc.clear()
+
+        if sync:
+            self.ipc['idle'] = self.leave_idle()
+            if self.batch:
+                self.mpc.command_list_ok_begin()
+                for cmd in self.batch:
+                    exec('self.mpc.' + cmd)
+                self.mpc.command_list_end()
+                self.batch.clear()
+            self.fetch()
+
+        self.round0()
+        self.round1()
+        self.update()
+
+        if type_ == 'stdin':
+            ##  flush input buffer to discard any typeaheads;
+            curses.flushinp()
+        else:
+            self.enter_idle()
 
     def main_loop(self):
-        '''Main loop.'''
+
+        '''
+        main loop;
+        '''
 
         poll = select.poll()
         poll.register(self.mpc.fileno(), select.POLLIN)
@@ -418,27 +469,35 @@ class Ncmpy():
         self.loop = True
         while self.loop:
             try:
-                responses = poll.poll(200)
-                if not responses:
-                    self.process('timeout')
-                else:
-                    for fd, event in responses:
-                        if fd == self.mpc.fileno() and event & select.POLLIN:
-                            self.process('mpd')
-                        elif fd == sys.stdin.fileno() and event & select.POLLIN:
-                            self.process('stdin')
-            except select.error as e:
-                # Ignore poll interruption.
+                resps = poll.poll(200)
+                if not resps:
+                    self.on_event('timeout')
+                    continue
+                for fd, event in resps:
+                    if fd == self.mpc.fileno() and event & select.POLLIN:
+                        self.on_event('mpd')
+                    if fd == sys.stdin.fileno() and event & select.POLLIN:
+                        self.on_event('stdin')
+            except OSError:
+                ##  ignore poll interruption;
                 pass
 
     def handler(self, signum, frame):
-        '''Signal handler.'''
+
+        '''signal handler;'''
 
         if signum == signal.SIGWINCH:
-            # Resize window.
-            self.resize_win()
-            # Consume KEY_RESIZE and update.
-            self.process('stdin')
+            self.resize()
+            ##  consume `KEY_RESIZE`;
+            self.on_event('stdin')
+
+def _main(stdscr):
+
+    ##  set locale;
+    locale.setlocale(locale.LC_ALL, '')
+
+    ##  start main loop;
+    Ncmpy(stdscr).main_loop()
 
 def main():
 
@@ -446,17 +505,7 @@ def main():
     main function;
     '''
 
-    try:
-        locale.setlocale(locale.LC_ALL,'')
-
-        if not os.path.isdir(conf.lyrics_dir):
-            os.makedirs(conf.lyrics_dir)
-
-        with Ncmpy() as ncmpy:
-            signal.signal(signal.SIGWINCH, ncmpy.handler)
-            ncmpy.main_loop()
-    finally:
-        curses.endwin()
+    return wrapper(_main)
 
 if __name__ == '__main__':
     main()

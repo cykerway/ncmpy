@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-'''Lyrics module.'''
+'''
+lyrics module;
+'''
 
 import re
 
@@ -109,6 +111,6 @@ def test():
     for text in texts:
         print(text)
 
-
 if __name__ == '__main__':
     test()
+

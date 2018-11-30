@@ -1,0 +1,25 @@
+##  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+##  ncmpy config file;
+##
+##  put this file at either of these locations; if both exist, user config file
+##  has higher precedence;
+##
+##  -   system config file: `/etc/ncmpy/ncmpy.yaml`;
+##
+##  -   user config file: `~/.config/ncmpy/ncmpy.yaml`;
+##  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+{
+    ##  mpd host;
+    "mpd_host": "localhost",
+
+    ##  mpd port;
+    "mpd_port": 6600,
+
+    ##  rate song;
+    "rate_song": true,
+
+    ##  lyrics dir;
+    "lyrics_dir": "~/.ncmpy/lyrics"
+}
+

@@ -1,55 +1,55 @@
 #!/usr/bin/env python3
 
-'''Config module.'''
+'''
+config module;
+'''
 
-import os
-import sys
+from os.path import expanduser
+from os.path import isfile
+from types import SimpleNamespace as namespace
+import yaml
 
-from ncmpy.util import printerr
+from ncmpy.keysym import keysym as ks
+from ncmpy.keysym import name2code
 
-class Config:
-    '''Config class.'''
+##  config;
+conf = namespace()
 
-    def __init__(self):
-        self.mpd_host = 'localhost'
-        self.mpd_port = 6600
-        self.enable_rating = True
-        self.lyrics_dir = os.path.expanduser('~/.ncmpy/lyrics')
+##  default config values;
+conf.mpd_host = 'localhost'
+conf.mpd_port = 6600
+conf.rate_song = True
+conf.lyrics_dir = expanduser('~/.ncmpy/lyrics')
 
-        for filename in (
-                os.path.expanduser('~/.config/ncmpy/ncmpy.conf'),
-                '/etc/ncmpy/ncmpy.conf',
-                ):
+##  read config files;
+for fname in [
+    expanduser('~/.config/ncmpy/ncmpy.yaml'),
+    '/etc/ncmpy/ncmpy.yaml',
+]:
+    try:
+        with open(fname, 'rt') as fp:
+            data = yaml.load(fp)
+    except:
+        continue
 
-            if not os.path.isfile(filename):
-                continue
+    ##  update config values;
+    if data.get('mpd_host') is not None:
+        conf.mpd_host = data.get('mpd_host')
+    if data.get('mpd_port') is not None:
+        conf.mpd_port = data.get('mpd_port')
+    if data.get('rate_song') is not None:
+        conf.rate_song = data.get('rate_song')
+    if data.get('lyrics_dir') is not None:
+        conf.lyrics_dir = expanduser(data.get('lyrics_dir'))
 
-            with open(filename, 'rt') as f:
-                line_num = 0
-                for l in f:
-                    line_num += 1
+    ##  update keysyms;
+    if data.get('keysym') is not None:
+        for sym, name in data.get('keysym').items():
+            if hasattr(ks, sym):
+                setattr(ks, sym, name2code(name))
+            else:
+                raise Exception('invalid keysym: {}'.format(sym))
 
-                    if l.startswith('#'):
-                        continue
-
-                    try:
-                        o, a = map(str.strip, l.split('=', 1))
-
-                        if o == 'MPD_HOST':
-                            self.mpd_host = a
-                        elif o == 'MPD_PORT':
-                            self.mpd_port = int(a)
-                        elif o == 'ENABLE_RATING':
-                            self.enable_rating = a in ['True', 'true', 'Yes', 'yes', '1']
-                        elif o == 'LYRICS_DIR':
-                            self.lyrics_dir = os.path.expanduser(a)
-                        else:
-                            raise
-                    except:
-                        printerr('Invalid line {} in config file {}'.format(line_num, filename))
-                        sys.exit(1)
-            break
-
-# Global configuration.
-conf = Config()
+    ##  break after config read;
+    break
 
