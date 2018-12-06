@@ -70,7 +70,7 @@ class Pane():
             self.ch = self.ctrl.ch
         else:
             ##  other panes take no input;
-            self.ch = -1
+            self.ch = None
 
     def round1(self):
 
