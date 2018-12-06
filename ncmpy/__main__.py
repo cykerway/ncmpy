@@ -56,8 +56,8 @@ class Ncmpy():
         self.menu_pane = MenuPane(
             'Menu',
             curses.newwin(1, self.width, 0, 0), self)
-        self.title_pane = TitlePane(
-            'Title',
+        self.line_pane = LinePane(
+            'Line',
             curses.newwin(1, self.width, 1, 0), self)
         self.progress_pane = ProgressPane(
             'Progress',
@@ -96,7 +96,7 @@ class Ncmpy():
         ##  pane list;
         self.panes = [
             self.menu_pane,
-            self.title_pane,
+            self.line_pane,
             self.progress_pane,
             self.status_pane,
             self.message_pane,
@@ -174,7 +174,7 @@ class Ncmpy():
             ##  these keysyms are truly local; they really dont send command to
             ##  server;
             ks.linedn, ks.lineup, ks.pagedn, ks.pageup,
-            ks.top, ks.middle, ks.bottom,
+            ks.top, ks.mid, ks.bot,
             ks.first, ks.last,
 
             ##  these keysyms are pseudo-local; they actually send command to

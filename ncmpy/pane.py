@@ -4,6 +4,7 @@
 pane module;
 '''
 
+from os.path import basename
 import curses
 import locale
 import mpd
@@ -14,6 +15,8 @@ import time
 from ncmpy import lrc
 from ncmpy import ttplyrics
 from ncmpy.config import conf
+from ncmpy.keysym import code2name as c2n
+from ncmpy.keysym import keysym as ks
 from ncmpy.util import format_time
 from ncmpy.util import get_tag
 
@@ -97,43 +100,72 @@ class Pane():
         pass
 
 class BarPane(Pane):
-    '''Bar pane.'''
 
-    def __init__(self, name, win, ctrl):
-        super().__init__(name, win, ctrl)
+    '''
+    a bar pane has full width, one-line height and is put at a fixed position in
+    the main window;
+    '''
 
-    def bar_resize(self, y, x):
-        '''Resize bar window.'''
+    def _resize(self, y, x):
+
+        '''
+        move and resize this bar pane;
+
+        ## params
+
+        y:int
+        :   y position of new upper left corner;
+
+        x:int
+        :   x position of new upper left corner;
+        '''
 
         self.win.resize(1, self.ctrl.width)
         self.height, self.width = self.win.getmaxyx()
         self.win.mvwin(y, x)
 
 class BlockPane(Pane):
-    '''Block pane.'''
 
-    def __init__(self, name, win, ctrl):
-        super().__init__(name, win, ctrl)
+    '''
+    a block pane has full width, multi-line height and is put at the center in
+    the main window; different block panes may overlap and one of them is on top
+    which accepts user input;
+    '''
 
-    def block_resize(self):
-        '''Resize block window.'''
+    def _resize(self, y, x):
+
+        '''
+        move and resize this block pane;
+
+        ## params
+
+        y:int
+        :   y position of new upper left corner;
+
+        x:int
+        :   x position of new upper left corner;
+        '''
 
         self.win.resize(self.ctrl.height - 4, self.ctrl.width)
         self.height, self.width = self.win.getmaxyx()
-        self.win.mvwin(2, 0)
+        self.win.mvwin(y, x)
 
     def resize(self):
-        self.block_resize()
+        self._resize(2, 0)
 
 class ScrollPane(BlockPane):
-    '''Scroll pane.'''
+
+    '''
+    a scroll pane is a special block pane which has scrollable content;
+    '''
 
     def __init__(self, name, win, ctrl):
         super().__init__(name, win, ctrl)
 
-        # Number of lines in total.
+        ##  total number of lines;
         self.num = 0
-        # Beginning line.
+
+        ##  beginning line number;
         self.beg = 0
 
     def line_down(self):
@@ -145,32 +177,34 @@ class ScrollPane(BlockPane):
             self.beg -= 1
 
     def page_down(self):
-        self.beg = min(self.beg + self.height, self.num - self.height)
+        self.beg = min(self.num - self.height, self.beg + self.height)
 
     def page_up(self):
-        self.beg = max(self.beg - self.height, 0)
+        self.beg = max(0, self.beg - self.height)
 
     def locate(self, pos):
-        '''Select pos, and put in the center.'''
-
-        if pos >= self.height // 2:
-            self.beg = pos - self.height // 2
-        else:
-            self.beg = 0
+        self.beg = max(0, pos - self.height // 2)
 
 class CursedPane(BlockPane):
-    '''Pane with cursor.'''
+
+    '''
+    a cursed pane is a special block pane which has a cursor and scrollable
+    content;
+    '''
 
     def __init__(self, name, win, ctrl):
         super().__init__(name, win, ctrl)
 
-        # Number of lines in total.
+        ##  total number of lines;
         self.num = 0
-        # Beginning line.
+
+        ##  beginning line number;
         self.beg = 0
-        # Selected line.
+
+        ##  selected line number;
         self.sel = 0
-        # Current line.
+
+        ##  current line number;
         self.cur = 0
 
     def line_down(self):
@@ -188,10 +222,10 @@ class CursedPane(BlockPane):
     def page_down(self):
         if self.sel < self.num - self.height:
             self.sel += self.height
-            self.beg = min(self.beg + self.height, self.num - self.height)
+            self.beg = min(self.num - self.height, self.beg + self.height)
         else:
             self.sel = self.num - 1
-            self.beg = max(self.num - self.height, 0)
+            self.beg = max(0, self.num - self.height)
 
     def page_up(self):
         if self.sel < self.height:
@@ -199,223 +233,208 @@ class CursedPane(BlockPane):
             self.beg = 0
         else:
             self.sel -= self.height
-            self.beg = max(self.beg - self.height, 0)
+            self.beg = max(0, self.beg - self.height)
 
     def select_top(self):
         self.sel = self.beg
 
-    def select_middle(self):
-        self.sel = min(self.beg + self.height // 2, self.num - 1)
+    def select_mid(self):
+        self.sel = min(self.num - 1, self.beg + self.height // 2)
 
-    def select_bottom(self):
-        self.sel = min(self.beg + self.height - 1, self.num - 1)
+    def select_bot(self):
+        self.sel = min(self.num - 1, self.beg + self.height - 1)
 
-    def to_first(self):
+    def select_first(self):
         self.beg = 0
         self.sel = 0
 
-    def to_last(self):
-        self.beg = max(self.num - 1, 0)
-        self.sel = max(self.num - 1, 0)
+    def select_last(self):
+        self.beg = max(0, self.num - 1)
+        self.sel = max(0, self.num - 1)
 
     def locate(self, pos):
-        '''Select pos, and put in the center.'''
-
-        if pos >= self.height // 2:
-            self.beg = pos - self.height // 2
-        else:
-            self.beg = 0
+        self.beg = max(0, pos - self.height // 2)
         self.sel = pos
 
-    def clamp(self, n):
-        '''Clamp value into range [0, num).'''
+    def clamp(self, pos):
+        return max(min(pos, self.num - 1), 0)
 
-        return max(min(n, self.num - 1), 0)
+    def _resize(self, y, x):
+        super()._resize(y, x)
+        self.sel = min(self.beg + self.height - 1, self.sel)
 
-    def block_resize(self):
-        BlockPane.block_resize(self)
-        self.sel = min(self.sel, self.beg + self.height - 1)
+    def search(self, pane_name, ch):
+        if not (self.ctrl.search_kw and self.ctrl.search_dr): return
 
-    def search(self, panename, c):
-        '''Search in panes.'''
+        dr = {
+            ord('/') : + 1,
+            ord('?') : - 1,
+            ord('n') : + self.ctrl.search_dr,
+            ord('N') : - self.ctrl.search_dr,
+        }[ch]
 
-        if panename == 'Queue':
-            items = self.queue
-        elif panename in ['Database', 'Artist-Album', 'Search']:
-            items = self.items
+        found = False
+        for k in range(self.sel + dr, self.sel + dr + dr * len(self.items), dr):
+            i = k % len(self.items)
+            item = self.items[i]
 
-        if self.ctrl.search_kw and self.ctrl.search_dr:
-            dr = {
-                ord('/') : + 1,
-                ord('?') : - 1,
-                ord('n') : + self.ctrl.search_dr,
-                ord('N') : - self.ctrl.search_dr,
-            }[c]
-            has_match = False
+            if pane_name in ['Queue', 'Search']:
+                title = get_tag('title', item) or basename(item['file'])
+            elif pane_name == 'Database':
+                title = list(item.values())[0]
+            elif pane_name == 'Artist-Album':
+                if self._type in ['artist', 'album']:
+                    title = item
+                elif self._type == 'song':
+                    title = get_tag('title', item) or basename(item['file'])
 
-            for i in [k % len(items) \
-                    for k in range(self.sel + dr, self.sel + dr + dr * len(items), dr)]:
-                item = items[i]
+            if self.ctrl.search_kw in title:
+                found = True
+                if dr == 1 and i <= self.sel:
+                    self.ipc['msg'] = 'search hit BOTTOM, continuing at TOP'
+                elif dr == -1 and i >= self.sel:
+                    self.ipc['msg'] = 'search hit TOP, continuing at BOTTOM'
+                self.locate(i)
+                break
 
-                if panename in ['Queue', 'Search']:
-                    title = get_tag('title', item) or os.path.basename(item['file'])
-                elif panename == 'Database':
-                    title = list(item.values())[0]
-                elif panename == 'Artist-Album':
-                    if self._type in ['artist', 'album']:
-                        title = item
-                    elif self._type == 'song':
-                        title = get_tag('title', item) or os.path.basename(item['file'])
-
-                if title.find(self.ctrl.search_kw) != -1:
-                    has_match = True
-                    if dr == 1 and i <= self.sel:
-                        self.ipc['msg'] = 'search hit BOTTOM, continuing at TOP'
-                    elif dr == -1 and i >= self.sel:
-                        self.ipc['msg'] = 'search hit TOP, continuing at BOTTOM'
-                    self.locate(i)
-                    break
-
-            if not has_match:
-                self.ipc['msg'] = 'Pattern not found: {}'.format(self.ctrl.search_kw)
+        if not found:
+            self.ipc['msg'] = 'Not found: {}'.format(self.ctrl.search_kw)
 
 class MenuPane(BarPane):
-    '''Display pane name, play mode and volume.'''
 
-    BLANK = ' ' * 5
+    '''
+    display pane name, play mode and volume;
+    '''
 
     def __init__(self, name, win, ctrl):
         super().__init__(name, win, ctrl)
         self.win.attron(curses.A_BOLD)
 
     def build_menu_str(self):
-        title_str = self.ctrl.cpane.name
-        mode_str = ('[con]' if int(self.status['consume']) else self.BLANK) + \
-                ('[ran]' if int(self.status['random']) else self.BLANK) + \
-                ('[rep]' if int(self.status['repeat']) else self.BLANK) + \
-                ('[sin]' if int(self.status['single']) else self.BLANK)
-        vol_str = 'Volume: ' + self.status['volume'] + '%'
+        title = self.ctrl.cpane.name
+        mode = '{:5s}{:5s}{:5s}{:5s}'.format(
+            '[con]' if int(self.status['consume']) else '',
+            '[ran]' if int(self.status['random']) else '',
+            '[rep]' if int(self.status['repeat']) else '',
+            '[sin]' if int(self.status['single']) else '',
+        )
+        vol = 'Volume: {:3d}%'.format(int(self.status['volume']))
 
-        state_str = '{}    {}'.format(mode_str, vol_str)
-        title_len = self.width - len(state_str)
-        menu_str = title_str.ljust(title_len) + state_str
-
-        return menu_str
+        return title + (mode + ' ' * 4 + vol).rjust(self.width - len(title))
 
     def update(self):
-        menu_str = self.build_menu_str()
-
-        # Must use insstr instead of addstr, because addstr cannot draw the last character (will
-        # raise an exception). The same applies to other panes.
+        ##  must use `insstr` instead of `addstr`, because `addstr` cannot draw
+        ##  the last character (will raise an exception); this also applies to
+        ##  other panes;
         self.win.erase()
-        self.win.insstr(0, 0, menu_str)
+        self.win.insstr(0, 0, self.build_menu_str())
         self.win.noutrefresh()
 
     def resize(self):
-        self.bar_resize(0, 0)
+        self._resize(0, 0)
 
-class TitlePane(BarPane):
-    '''Horizontal line.'''
+class LinePane(BarPane):
 
-    def __init__(self, name, win, ctrl):
-        BarPane.__init__(self, name, win, ctrl)
+    '''
+    display a horizontal line;
+    '''
 
     def update(self):
         self.win.erase()
-        self.win.insstr(0, 0, self.width * '-')
+        self.win.insstr(0, 0, '-' * self.width)
         self.win.noutrefresh()
 
     def resize(self):
-        self.bar_resize(1, 0)
+        self._resize(1, 0)
 
 class ProgressPane(BarPane):
-    '''Show playing progress.'''
 
-    def __init__(self, name, win, ctrl):
-        BarPane.__init__(self, name, win, ctrl)
+    '''
+    display playback progress;
+    '''
 
     def build_prog_str(self):
-        '''Build progress str.'''
-
         state = self.status.get('state')
         if state == 'stop':
             return '-' * self.width
         else:
-            tm = self.status.get('time')
-            elapsed, total = tm.split(':')
-            pos = int((float(elapsed) / float(total)) * (self.width - 1))
+            elapsed, total = self.status.get('time').split(':')
+            pos = int(int(elapsed) / int(total) * (self.width - 1))
             return '=' * pos + '0' + '-' * (self.width - pos - 1)
 
     def update(self):
-        prog_str = self.build_prog_str()
-
         self.win.erase()
-        self.win.insstr(0, 0, prog_str)
+        self.win.insstr(0, 0, self.build_prog_str())
         self.win.noutrefresh()
 
     def resize(self):
-        self.bar_resize(self.ctrl.height - 2, 0)
+        self._resize(self.ctrl.height - 2, 0)
 
 class StatusPane(BarPane):
-    '''Show playing status, elapsed/total time.'''
 
-    state_name = {
-            'play' : 'Playing',
-            'stop' : 'Stopped',
-            'pause' : 'Paused',
-            }
+    '''
+    display playback status (song title, elapsed and total time);
+    '''
 
     def __init__(self, name, win, ctrl):
-        BarPane.__init__(self, name, win, ctrl)
+        super().__init__(name, win, ctrl)
         self.win.attron(curses.A_BOLD)
 
     def build_title_str(self):
-        '''Build title str.'''
-
-        state = self.status.get('state')
+        state = {
+            'play'  : 'Playing',
+            'stop'  : 'Stopped',
+            'pause' : 'Paused',
+        }[self.status.get('state')]
         song = self.currentsong
-        title = song and (song.get('title') or os.path.basename(song.get('file'))) or ''
-        return '{} > {}'.format(self.state_name[state], title)
+        title = song and (song.get('title') or basename(song.get('file'))) or ''
+        return '{} > {}'.format(state, title)
 
     def build_tm_str(self):
-        '''Build tm str.'''
-
         tm = self.status.get('time') or '0:0'
         elapsed, total = map(int, tm.split(':'))
-        elapsed_mm, elapsed_ss, total_mm, total_ss = \
-                elapsed // 60, elapsed % 60, total // 60, total % 60
-        return '[{0}:{1:02d} ~ {2}:{3:02d}]'.format(elapsed_mm, elapsed_ss, total_mm, total_ss)
+        elapsed_mm, elapsed_ss = divmod(elapsed, 60)
+        total_mm, total_ss = divmod(total, 60)
+        return '[{}:{:02d} ~ {}:{:02d}]'.format(
+            elapsed_mm, elapsed_ss, total_mm, total_ss)
 
     def update(self):
-        # Use two strs because it's difficult to calculate display length of unicode characters.
-        title_str = self.build_title_str()
-        tm_str = self.build_tm_str()
+        ##  use two strs because it is difficult to calculate display length of
+        ##  unicode characters;
+        title = self.build_title_str()
+        tm = self.build_tm_str()
 
         self.win.erase()
-        self.win.insstr(0, 0, title_str)
-        self.win.insstr(0, self.width - len(tm_str), tm_str)
+        self.win.insstr(0, 0, title)
+        self.win.insstr(0, self.width - len(tm), tm)
         self.win.noutrefresh()
 
     def resize(self):
-        self.bar_resize(self.ctrl.height - 1, 0)
+        self._resize(self.ctrl.height - 1, 0)
 
 class MessagePane(BarPane):
-    '''Show message and get user input.'''
+
+    '''
+    display message; get user input;
+    '''
 
     def __init__(self, name, win, ctrl):
-        BarPane.__init__(self, name, win, ctrl)
+        super().__init__(name, win, ctrl)
         self.msg = None
         self.timeout = 0
 
     def getstr(self, prompt):
-        '''Get user input with prompt <prompt>.'''
+
+        '''
+        get user input with prompt;
+        '''
 
         curses.nocbreak()
         curses.echo()
         curses.curs_set(1)
         self.win.move(0, 0)
         self.win.clrtoeol()
-        self.win.addstr('{}: '.format(prompt), curses.A_BOLD)
+        self.win.addstr(f'{prompt}: ', curses.A_BOLD)
         s = self.win.getstr(0, len(prompt) + 2)
         curses.curs_set(0)
         curses.noecho()
@@ -426,9 +445,9 @@ class MessagePane(BarPane):
         msg = self.ipc.get('msg')
         if msg:
             self.msg = msg
-            self.timeout = 10   # Magic!
+            self.timeout = 10   ##  magic: dismiss msg after 10 updates;
 
-        # TODO. Use a real timer.
+        ##  todo: use a real timer;
         if self.timeout > 0:
             self.win.erase()
             self.win.insstr(0, 0, self.msg, curses.A_BOLD)
@@ -436,134 +455,129 @@ class MessagePane(BarPane):
             self.timeout -= 1
 
     def resize(self):
-        self.bar_resize(self.ctrl.height - 1, 0)
+        self._resize(self.ctrl.height - 1, 0)
 
 class HelpPane(ScrollPane):
-    '''Help.'''
+
+    '''
+    display help message;
+    '''
 
     def __init__(self, name, win, ctrl):
-        ScrollPane.__init__(self, name, win, ctrl)
+        super().__init__(name, win, ctrl)
         self.lines = [
-                ('group', 'Global', None),
-                ('hline', None, None),
-                ('item', 'F1', 'Help'),
-                ('item', 'F2', 'Queue'),
-                ('item', 'F3', 'Database'),
-                ('item', 'F4', 'Lyrics'),
-                ('item', 'F5', 'Artist-Album'),
-                ('item', 'F6', 'Search'),
-                ('item', 'F7', 'Info'),
-                ('item', 'F8', 'Output'),
-                ('blank', None, None),
-                ('item', 'q', 'quit'),
-                ('blank', None, None),
-
-                ('group', 'Playback', None),
-                ('hline', None, None),
-                ('item', 'Space', 'Play/Pause'),
-                ('item', 's', 'Stop'),
-                ('item', '>', 'next song'),
-                ('item', '<', 'previous song'),
-                ('blank', None, None),
-                ('item', 'u', 'consume mode'),
-                ('item', 'i', 'random mode'),
-                ('item', 'o', 'repeat mode'),
-                ('item', 'p', 'single mode'),
-                ('blank', None, None),
-                ('item', '9', 'volume down'),
-                ('item', '0', 'volume up'),
-                ('blank', None, None),
-                ('item', 'left', 'seek +1'),
-                ('item', 'right', 'seek -1'),
-                ('item', 'down', 'seek -1%'),
-                ('item', 'up', 'seek +1%'),
-                ('blank', None, None),
-
-                ('group', 'Movement', None),
-                ('hline', None, None),
-                ('item', 'j', 'go one line down'),
-                ('item', 'k', 'go one line up'),
-                ('item', 'f', 'go one page down'),
-                ('item', 'b', 'go one page up'),
-                ('item', 'g', 'go to top of list'),
-                ('item', 'G', 'go to bottom of list'),
-                ('item', 'H', 'go to top of screen'),
-                ('item', 'M', 'go to middle of screen'),
-                ('item', 'L', 'go to bottom of screen'),
-                ('blank', None, None),
-                ('item', '/', 'search down'),
-                ('item', '?', 'search up'),
-                ('item', 'n', 'next match'),
-                ('item', 'N', 'previous match'),
-                ('blank', None, None),
-
-                ('group', 'Queue', ''),
-                ('hline', None, None),
-                ('item', 'Enter', 'Play'),
-                ('item', 'l', 'select and center current song'),
-                ('item', '\'', 'toggle auto center'),
-                ('item', ';', 'locate selected song in database'),
-                ('blank', None, None),
-                ('item', 'x', 'remove song rating'),
-                ('item', '1', 'rate selected song as     *'),
-                ('item', '2', 'rate selected song as    **'),
-                ('item', '3', 'rate selected song as   ***'),
-                ('item', '4', 'rate selected song as  ****'),
-                ('item', '5', 'rate selected song as *****'),
-                ('blank', None, None),
-                ('item', 'J', 'Move down selected song'),
-                ('item', 'K', 'Move up selected song'),
-                ('item', 'e', 'shuffle queue'),
-                ('item', 'c', 'clear queue'),
-                ('item', 'a', 'add all songs from database'),
-                ('item', 'd', 'delete selected song from queue'),
-                ('item', 'S', 'save queue to playlist'),
-                ('item', 'O', 'load queue from playlist'),
-                ('blank', None, None),
-
-                ('group', 'Database', ''),
-                ('hline', None, None),
-                ('item', 'Enter', 'open directory / play song / load playlist'),
-                ('item', '\'', 'go to parent directory'),
-                ('item', '"', 'go to root directory'),
-                ('item', 'a', 'append song to queue recursively'),
-                ('item', ';', 'locate selected song in queue'),
-                ('item', 'U', 'update database'),
-                ('blank', None, None),
-
-                ('group', 'Lyrics', ''),
-                ('hline', None, None),
-                ('item', 'l', 'center current line'),
-                ('item', '\'', 'toggle auto center'),
-                ('item', 'K', 'save lyrics'),
-                ('blank', None, None),
-
-                ('group', 'Artist-Album', ''),
-                ('hline', None, None),
-                ('item', 'Enter', 'open level / play song'),
-                ('item', '\'', 'go to parent level'),
-                ('item', '"', 'go to root level'),
-                ('item', 'a', 'append song to queue recursively'),
-                ('item', ';', 'locate selected song in queue'),
-                ('blank', None, None),
-
-                ('group', 'Search', ''),
-                ('hline', None, None),
-                ('item', 'B', 'start a database search, syntax = <tag_name>:<tag_value>'),
-                ('item', 'Enter', 'play song'),
-                ('item', 'a', 'append song to queue'),
-                ('item', ';', 'locate selected song in queue'),
-                ('blank', None, None),
-
-                ('group', 'Info', ''),
-                ('hline', None, None),
-                ('blank', None, None),
-
-                ('group', 'Output', ''),
-                ('hline', None, None),
-                ('item', 't', 'toggle output'),
-                ('blank', None, None),
-                ]
+            ('head', 'global'               ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.panehelp)       , 'help'                    ),
+            ('item', c2n(ks.panequeue)      , 'queue'                   ),
+            ('item', c2n(ks.panedatabase)   , 'database'                ),
+            ('item', c2n(ks.panelyrics)     , 'lyrics'                  ),
+            ('item', c2n(ks.paneartistalbum), 'artist-album'            ),
+            ('item', c2n(ks.panesearch)     , 'search'                  ),
+            ('item', c2n(ks.paneinfo)       , 'info'                    ),
+            ('item', c2n(ks.paneoutput)     , 'output'                  ),
+            ('void', ''                     ,                           ),
+            ('item', c2n(ks.quit)           , 'quit'                    ),
+            ('void', ''                     ,                           ),
+            ('head', 'playback'             ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.play)           , 'play'                    ),
+            ('item', c2n(ks.pause)          , 'pause'                   ),
+            ('item', c2n(ks.stop)           , 'stop'                    ),
+            ('item', c2n(ks.next)           , 'next song'               ),
+            ('item', c2n(ks.prev)           , 'prev song'               ),
+            ('void', ''                     ,                           ),
+            ('item', c2n(ks.consume)        , 'consume mode'            ),
+            ('item', c2n(ks.random)         , 'random mode'             ),
+            ('item', c2n(ks.repeat)         , 'repeat mode'             ),
+            ('item', c2n(ks.single)         , 'single mode'             ),
+            ('void', ''                     ,                           ),
+            ('item', c2n(ks.voldn)          , 'volume down'             ),
+            ('item', c2n(ks.volup)          , 'volume up'               ),
+            ('void', ''                     ,                           ),
+            ('item', c2n(ks.seekb)          , 'seek -1'                 ),
+            ('item', c2n(ks.seekf)          , 'seek +1'                 ),
+            ('item', c2n(ks.seekbp)         , 'seek -1%'                ),
+            ('item', c2n(ks.seekfp)         , 'seek +1%'                ),
+            ('void', ''                     ,                           ),
+            ('head', 'movement'             ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.linedn)         , 'move one line down'      ),
+            ('item', c2n(ks.lineup)         , 'move one line up'        ),
+            ('item', c2n(ks.pagedn)         , 'move one page down'      ),
+            ('item', c2n(ks.pageup)         , 'move one page up'        ),
+            ('item', c2n(ks.first)          , 'move to first'           ),
+            ('item', c2n(ks.last)           , 'move to last'            ),
+            ('item', c2n(ks.top)            , 'move to top of screen'   ),
+            ('item', c2n(ks.mid)            , 'move to mid of screen'   ),
+            ('item', c2n(ks.bot)            , 'move to bot of screen'   ),
+            ('void', ''                     ,                           ),
+            ('item', c2n(ks.searchdn)       , 'search down'             ),
+            ('item', c2n(ks.searchup)       , 'search up'               ),
+            ('item', c2n(ks.searchnext)     , 'next match'              ),
+            ('item', c2n(ks.searchprev)     , 'prev match'              ),
+            ('void', ''                     ,                           ),
+            ('head', 'queue'                ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.play)           , 'play'                    ),
+            ('item', c2n(ks.locate)         , 'locate current song'     ),
+            ('item', c2n(ks.lock)           , 'toggle auto center'      ),
+            ('item', c2n(ks.dblocate)       , 'locate song in database' ),
+            ('void', ''                     ,                           ),
+            ('item', c2n(ks.rate0)          , 'remove song rating'      ),
+            ('item', c2n(ks.rate1)          , 'rate song as     *'      ),
+            ('item', c2n(ks.rate1)          , 'rate song as    **'      ),
+            ('item', c2n(ks.rate1)          , 'rate song as   ***'      ),
+            ('item', c2n(ks.rate1)          , 'rate song as  ****'      ),
+            ('item', c2n(ks.rate1)          , 'rate song as *****'      ),
+            ('void', ''                     ,                           ),
+            ('item', c2n(ks.swapdn)         , 'move down selected song' ),
+            ('item', c2n(ks.swapup)         , 'move up selected song'   ),
+            ('item', c2n(ks.shuffle)        , 'shuffle queue'           ),
+            ('item', c2n(ks.clear)          , 'clear queue'             ),
+            ('item', c2n(ks.add)            , 'add songs from database' ),
+            ('item', c2n(ks.delete)         , 'delete song from queue'  ),
+            ('item', c2n(ks.savepl)         , 'save queue to playlist'  ),
+            ('item', c2n(ks.loadpl)         , 'load queue from playlist'),
+            ('void', ''                     ,                           ),
+            ('head', 'database'             ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.play)           , 'open dir|song|playlist'  ),
+            ('item', c2n(ks.parent)         , 'go to parent dir'        ),
+            ('item', c2n(ks.root)           , 'go to root dir'          ),
+            ('item', c2n(ks.add)            , 'append song to queue'    ),
+            ('item', c2n(ks.dblocate)       , 'locate song in queue'    ),
+            ('item', c2n(ks.update)         , 'update database'         ),
+            ('void', ''                     ,                           ),
+            ('head', 'lyrics'               ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.locate)         , 'center current line'     ),
+            ('item', c2n(ks.lock)           , 'toggle auto center'      ),
+            ('item', c2n(ks.savelyrics)     , 'save lyrics'             ),
+            ('void', ''                     ,                           ),
+            ('head', 'artist-album'         ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.play)           , 'open artist|album|song'  ),
+            ('item', c2n(ks.parent)         , 'go to parent level'      ),
+            ('item', c2n(ks.root)           , 'go to root level'        ),
+            ('item', c2n(ks.add)            , 'append song to queue'    ),
+            ('item', c2n(ks.dblocate)       , 'locate song in queue'    ),
+            ('void', ''                     ,                           ),
+            ('head', 'search'               ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', c2n(ks.search)         , 'search {name}:{value}'   ),
+            ('item', c2n(ks.play)           , 'play song'               ),
+            ('item', c2n(ks.add)            , 'append song to queue'    ),
+            ('item', c2n(ks.dblocate)       , 'locate song in queue'    ),
+            ('void', ''                     ,                           ),
+            ('head', 'info'                 ,                           ),
+            ('line', ''                     ,                           ),
+            ('void', ''                     ,                           ),
+            ('head', 'output'               ,                           ),
+            ('line', ''                     ,                           ),
+            ('item', 't'                    , 'toggle output'           ),
+            ('void', ''                     ,                           ),
+        ]
         self.num = len(self.lines)
 
     def round0(self):
@@ -580,17 +594,17 @@ class HelpPane(ScrollPane):
 
     def update(self):
         self.win.erase()
-        for i in range(self.beg, min(self.beg + self.height, self.num)):
-            line = self.lines[i]
-            if line[0] == 'group':
-                self.win.insstr(i - self.beg, 6, line[1], curses.A_BOLD)
-            elif line[0] == 'hline':
+        for i in range(self.beg, min(self.num, self.beg + self.height)):
+            l = self.lines[i]
+            if l[0] == 'head':
+                self.win.insstr(i - self.beg, 6, l[1], curses.A_BOLD)
+            elif l[0] == 'line':
                 self.win.attron(curses.A_BOLD)
                 self.win.hline(i - self.beg, 3, '-', self.width - 6)
                 self.win.attroff(curses.A_BOLD)
-            elif line[0] == 'item':
-                self.win.insstr(i - self.beg, 0, line[1].rjust(20) + ' : ' + line[2])
-            elif line[0] == 'blank':
+            elif l[0] == 'item':
+                self.win.insstr(i - self.beg, 0, l[1].rjust(20) + ' : ' + l[2])
+            elif l[0] == 'void':
                 pass
         self.win.noutrefresh()
 
@@ -611,12 +625,12 @@ class QueuePane(CursedPane):
 
         # Fetch playlist if version is different.
         if self.pl_version != int(self.status['playlist']):
-            self.queue = self.mpc.playlistinfo()
-            self.num = len(self.queue)
+            self.items = self.mpc.playlistinfo()
+            self.num = len(self.items)
             self.beg = self.clamp(self.beg)
             self.sel = self.clamp(self.sel)
 
-            for song in self.queue:
+            for song in self.items:
                 if conf.rate_song:
                     try:
                         rating = int(self.mpc.sticker_get(\
@@ -646,13 +660,13 @@ class QueuePane(CursedPane):
         elif self.ch == ord('H'):
             self.select_top()
         elif self.ch == ord('M'):
-            self.select_middle()
+            self.select_mid()
         elif self.ch == ord('L'):
-            self.select_bottom()
+            self.select_bot()
         elif self.ch == ord('g'):
-            self.to_first()
+            self.select_first()
         elif self.ch == ord('G'):
-            self.to_last()
+            self.select_last()
         elif self.ch == ord('l'):
             self.locate(self.cur)
         elif self.ch == ord('a'):
@@ -662,8 +676,8 @@ class QueuePane(CursedPane):
             self.num = self.beg = self.sel = self.cur = 0
         elif self.ch == ord('d'):
             if self.num > 0:
-                self.ctrl.batch.append('deleteid({})'.format(self.queue[self.sel]['id']))
-                self.queue.pop(self.sel)
+                self.ctrl.batch.append('deleteid({})'.format(self.items[self.sel]['id']))
+                self.items.pop(self.sel)
                 if self.sel < self.cur:
                     self.cur -= 1
                 self.num -= 1
@@ -673,8 +687,8 @@ class QueuePane(CursedPane):
         elif self.ch == ord('J'):
             if self.sel + 1 < self.num:
                 self.ctrl.batch.append('swap({}, {})'.format(self.sel, self.sel + 1))
-                self.queue[self.sel], self.queue[self.sel + 1] = \
-                        self.queue[self.sel + 1], self.queue[self.sel]
+                self.items[self.sel], self.items[self.sel + 1] = \
+                        self.items[self.sel + 1], self.items[self.sel]
                 if self.cur == self.sel:
                     self.cur += 1
                 elif self.cur == self.sel + 1:
@@ -683,8 +697,8 @@ class QueuePane(CursedPane):
         elif self.ch == ord('K'):
             if self.sel > 0:
                 self.ctrl.batch.append('swap({}, {})'.format(self.sel, self.sel - 1))
-                self.queue[self.sel - 1], self.queue[self.sel] = \
-                        self.queue[self.sel], self.queue[self.sel - 1]
+                self.items[self.sel - 1], self.items[self.sel] = \
+                        self.items[self.sel], self.items[self.sel - 1]
                 if self.cur == self.sel - 1:
                     self.cur += 1
                 elif self.cur == self.sel:
@@ -693,18 +707,18 @@ class QueuePane(CursedPane):
         elif self.ch == ord('e'):
             self.mpc.shuffle()
         elif self.ch == ord('\n'):
-            self.mpc.playid(self.queue[self.sel]['id'])
+            self.mpc.playid(self.items[self.sel]['id'])
         elif self.ch in range(ord('1'), ord('5') + 1):
             if conf.rate_song:
                 rating = self.ch - ord('0')
-                if 0 <= self.cur and self.cur < len(self.queue):
-                    song = self.queue[self.cur]
+                if 0 <= self.cur and self.cur < len(self.items):
+                    song = self.items[self.cur]
                     self.mpc.sticker_set('song', song['file'], 'rating', rating)
                     song['rating'] = rating
         elif self.ch == ord('x'):
             if conf.rate_song:
-                if 0 <= self.cur and self.cur < len(self.queue):
-                    song = self.queue[self.cur]
+                if 0 <= self.cur and self.cur < len(self.items):
+                    song = self.items[self.cur]
                     try:
                         self.mpc.sticker_delete('song', song['file'], 'rating')
                     except mpd.CommandError as e:
@@ -712,21 +726,21 @@ class QueuePane(CursedPane):
                     else:
                         song['rating'] = 0
         elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self.search('Queue', self.ch)
+            self.search(self.name, self.ch)
         elif self.ch == ord('\''):
             self.auto_center = not self.auto_center
         elif self.ch == ord(';'):
-            self.ipc['database-locate'] = self.queue[self.sel]['file']
+            self.ipc['database-locate'] = self.items[self.sel]['file']
 
         # Record selected song in board.
         if self.num > 0:
-            self.ipc['queue-selected'] = self.queue[self.sel]
+            self.ipc['queue-selected'] = self.items[self.sel]
 
     def round1(self):
         uri = self.ipc.get('queue-locate')
         if uri:
-            for i in range(len(self.queue)):
-                if uri == self.queue[i]['file']:
+            for i in range(len(self.items)):
+                if uri == self.items[i]['file']:
                     self.locate(i)
                     break
             else:
@@ -739,7 +753,7 @@ class QueuePane(CursedPane):
     def update(self):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
-            item = self.queue[i]
+            item = self.items[i]
             title = get_tag('title', item) or os.path.basename(item['file'])
             rating = item['rating']
             tm = format_time(item['time'])
@@ -809,13 +823,13 @@ class DatabasePane(CursedPane):
         elif self.ch == ord('H'):
             self.select_top()
         elif self.ch == ord('M'):
-            self.select_middle()
+            self.select_mid()
         elif self.ch == ord('L'):
-            self.select_bottom()
+            self.select_bot()
         elif self.ch == ord('g'):
-            self.to_first()
+            self.select_first()
         elif self.ch == ord('G'):
-            self.to_last()
+            self.select_last()
         elif self.ch == ord('\''):
             oldroot = self.dir
             self.dir = os.path.dirname(self.dir)
@@ -884,7 +898,7 @@ class DatabasePane(CursedPane):
         elif self.ch == ord('U'):
             self.mpc.update()
         elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self.search('Database', self.ch)
+            self.search(self.name, self.ch)
         elif self.ch == ord(';'):
             # tell QUEUE we want to locate a song
             item = self.items[self.sel]
@@ -1166,13 +1180,13 @@ class ArtistAlbumPane(CursedPane):
         elif self.ch == ord('H'):
             self.select_top()
         elif self.ch == ord('M'):
-            self.select_middle()
+            self.select_mid()
         elif self.ch == ord('L'):
-            self.select_bottom()
+            self.select_bot()
         elif self.ch == ord('g'):
-            self.to_first()
+            self.select_first()
         elif self.ch == ord('G'):
-            self.to_last()
+            self.select_last()
         elif self.ch == ord('\''):
             if self._type == 'artist':
                 pass
@@ -1221,7 +1235,7 @@ class ArtistAlbumPane(CursedPane):
             elif self._type == 'song':
                 self.mpc.add(item['file'])
         elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self.search('Artist-Album', self.ch)
+            self.search(self.name, self.ch)
         elif self.ch == ord(';'):
             # tell QUEUE we want to locate a song
             if self._type == 'song':
@@ -1300,13 +1314,13 @@ class SearchPane(CursedPane):
         elif self.ch == ord('H'):
             self.select_top()
         elif self.ch == ord('M'):
-            self.select_middle()
+            self.select_mid()
         elif self.ch == ord('L'):
-            self.select_bottom()
+            self.select_bot()
         elif self.ch == ord('g'):
-            self.to_first()
+            self.select_first()
         elif self.ch == ord('G'):
-            self.to_last()
+            self.select_last()
         elif self.ch == ord('B'):
             self.items = self.build(
                 self.ctrl.message_pane.getstr('Database Search'))
@@ -1324,7 +1338,7 @@ class SearchPane(CursedPane):
             item = self.items[self.sel]
             self.mpc.add(item['file'])
         elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
-            self.search('Search', self.ch)
+            self.search(self.name, self.ch)
         elif self.ch == ord(';'):
             # tell QUEUE we want to locate a song
             if self.sel < self.num:

@@ -12,6 +12,8 @@ import curses
 ##  keynames are used in config files;
 keyname = namespace()
 
+keyname.space           =   ord(' ')
+keyname.enter           =   ord('\n')
 keyname.left            =   curses.KEY_LEFT
 keyname.right           =   curses.KEY_RIGHT
 keyname.down            =   curses.KEY_DOWN
@@ -52,8 +54,8 @@ keysym.lineup           =   ord('k')
 keysym.pagedn           =   ord('f')
 keysym.pageup           =   ord('b')
 keysym.top              =   ord('H')
-keysym.middle           =   ord('M')
-keysym.bottom           =   ord('L')
+keysym.mid              =   ord('M')
+keysym.bot              =   ord('L')
 keysym.first            =   ord('g')
 keysym.last             =   ord('G')
 keysym.locate           =   ord('l')
@@ -72,6 +74,7 @@ keysym.rate4            =   ord('4')
 keysym.rate5            =   ord('5')
 keysym.lock             =   ord('\'')           ##  autocenter
 keysym.dblocate         =   ord(';')            ##  database-locate
+keysym.parent           =   ord('\'')
 keysym.root             =   ord('"')
 keysym.update           =   ord('U')
 keysym.savelyrics       =   ord('K')
@@ -100,4 +103,15 @@ def name2code(name):
         return getattr(keyname, name)
     else:
         return ord(name)
+
+def code2name(code):
+
+    '''
+    convert keycode to keyname;
+    '''
+
+    for name_, code_ in vars(keyname).items():
+        if code_ == code:
+            return name_
+    return chr(code)
 
