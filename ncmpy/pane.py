@@ -575,7 +575,7 @@ class HelpPane(ScrollPane):
             ('void', ''                     ,                           ),
             ('head', 'output'               ,                           ),
             ('line', ''                     ,                           ),
-            ('item', 't'                    , 'toggle output'           ),
+            ('item', c2n(ks.toggle)         , 'toggle output'           ),
             ('void', ''                     ,                           ),
         ]
         self.num = len(self.lines)
