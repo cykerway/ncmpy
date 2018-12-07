@@ -46,6 +46,9 @@ class Ncmpy():
         curses.init_pair(2, curses.COLOR_GREEN, -1)
         curses.init_pair(3, curses.COLOR_YELLOW, -1)
 
+        ##  force a refresh; otherwise strange things happen on first key press;
+        stdscr.refresh()
+
         ##  store main window and its size;
         self.stdscr = stdscr
         self.height, self.width = self.stdscr.getmaxyx()
