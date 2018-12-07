@@ -17,6 +17,7 @@ from ncmpy import ttplyrics
 from ncmpy.config import conf
 from ncmpy.keysym import code2name as c2n
 from ncmpy.keysym import keysym as ks
+from ncmpy.keysym import keysymgrp as ksg
 from ncmpy.util import format_time
 from ncmpy.util import get_tag
 
@@ -522,7 +523,7 @@ class HelpPane(ScrollPane):
             ('item', c2n(ks.lock)           , 'toggle auto center'      ),
             ('item', c2n(ks.dblocate)       , 'locate song in database' ),
             ('void', ''                     , ''                        ),
-            ('item', c2n(ks.rate0)          , 'remove song rating'      ),
+            ('item', c2n(ks.unrate)         , 'unrate song'             ),
             ('item', c2n(ks.rate1)          , 'rate song as     *'      ),
             ('item', c2n(ks.rate2)          , 'rate song as    **'      ),
             ('item', c2n(ks.rate3)          , 'rate song as   ***'      ),
@@ -646,39 +647,41 @@ class QueuePane(CursedPane):
 
             self.pl_ver = int(self.status['playlist'])
 
+        ##  current song;
         self.cur = int(self.status.get('song', '0'))
 
     def round0(self):
         super().round0()
 
-        if self.ch == ord('j'):
+        if self.ch == ks.linedn:
             self.line_down()
-        elif self.ch == ord('k'):
+        elif self.ch == ks.lineup:
             self.line_up()
-        elif self.ch == ord('f'):
+        elif self.ch == ks.pagedn:
             self.page_down()
-        elif self.ch == ord('b'):
+        elif self.ch == ks.pageup:
             self.page_up()
-        elif self.ch == ord('H'):
+        elif self.ch == ks.top:
             self.select_top()
-        elif self.ch == ord('M'):
+        elif self.ch == ks.mid:
             self.select_mid()
-        elif self.ch == ord('L'):
+        elif self.ch == ks.bot:
             self.select_bot()
-        elif self.ch == ord('g'):
+        elif self.ch == ks.first:
             self.select_first()
-        elif self.ch == ord('G'):
+        elif self.ch == ks.last:
             self.select_last()
-        elif self.ch == ord('l'):
+        elif self.ch == ks.locate:
             self.locate(self.cur)
-        elif self.ch == ord('a'):
+        elif self.ch == ks.add:
             self.mpc.add('')
-        elif self.ch == ord('c'):
+        elif self.ch == ks.clear:
             self.mpc.clear()
             self.num = self.beg = self.sel = self.cur = 0
-        elif self.ch == ord('d'):
+        elif self.ch == ks.delete:
             if self.num > 0:
-                self.ctrl.batch.append('deleteid({})'.format(self.items[self.sel]['id']))
+                self.ctrl.batch.append(
+                    'deleteid({})'.format(self.items[self.sel]['id']))
                 self.items.pop(self.sel)
                 if self.sel < self.cur:
                     self.cur -= 1
@@ -686,9 +689,10 @@ class QueuePane(CursedPane):
                 self.beg = self.clamp(self.beg)
                 self.sel = self.clamp(self.sel)
                 self.cur = self.clamp(self.cur)
-        elif self.ch == ord('J'):
+        elif self.ch == ks.swapdn:
             if self.sel + 1 < self.num:
-                self.ctrl.batch.append('swap({}, {})'.format(self.sel, self.sel + 1))
+                self.ctrl.batch.append(
+                    'swap({}, {})'.format(self.sel, self.sel + 1))
                 self.items[self.sel], self.items[self.sel + 1] = \
                         self.items[self.sel + 1], self.items[self.sel]
                 if self.cur == self.sel:
@@ -696,9 +700,10 @@ class QueuePane(CursedPane):
                 elif self.cur == self.sel + 1:
                     self.cur -= 1
                 self.line_down()
-        elif self.ch == ord('K'):
+        elif self.ch == ks.swapup:
             if self.sel > 0:
-                self.ctrl.batch.append('swap({}, {})'.format(self.sel, self.sel - 1))
+                self.ctrl.batch.append(
+                    'swap({}, {})'.format(self.sel, self.sel - 1))
                 self.items[self.sel - 1], self.items[self.sel] = \
                         self.items[self.sel], self.items[self.sel - 1]
                 if self.cur == self.sel - 1:
@@ -706,18 +711,24 @@ class QueuePane(CursedPane):
                 elif self.cur == self.sel:
                     self.cur -= 1
                 self.line_up()
-        elif self.ch == ord('e'):
+        elif self.ch == ks.shuffle:
             self.mpc.shuffle()
-        elif self.ch == ord('\n'):
+        elif self.ch == ks.play:
             self.mpc.playid(self.items[self.sel]['id'])
-        elif self.ch in range(ord('1'), ord('5') + 1):
+        elif self.ch in ksg.rate:
             if conf.rate_song:
-                rating = self.ch - ord('0')
+                rating = {
+                    ks.rate1: 1,
+                    ks.rate2: 2,
+                    ks.rate3: 3,
+                    ks.rate4: 4,
+                    ks.rate5: 5,
+                }[self.ch]
                 if 0 <= self.cur and self.cur < len(self.items):
                     song = self.items[self.cur]
                     self.mpc.sticker_set('song', song['file'], 'rating', rating)
                     song['rating'] = rating
-        elif self.ch == ord('x'):
+        elif self.ch == ks.unrate:
             if conf.rate_song:
                 if 0 <= self.cur and self.cur < len(self.items):
                     song = self.items[self.cur]
@@ -727,14 +738,14 @@ class QueuePane(CursedPane):
                         self.ipc['msg'] = str(e)
                     else:
                         song['rating'] = 0
-        elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
+        elif self.ch in ksg.search:
             self.search(self.name, self.ch)
-        elif self.ch == ord('\''):
+        elif self.ch == ks.lock:
             self.auto_center = not self.auto_center
-        elif self.ch == ord(';'):
+        elif self.ch == ks.dblocate:
             self.ipc['database-locate'] = self.items[self.sel]['file']
 
-        # Record selected song in board.
+        ##  announce selected song;
         if self.num > 0:
             self.ipc['queue-selected'] = self.items[self.sel]
 
@@ -748,7 +759,7 @@ class QueuePane(CursedPane):
             else:
                 self.ipc['msg'] = 'Not found in playlist'
 
-        # Auto center.
+        ##  auto center;
         if self.auto_center:
             self.locate(self.cur)
 
@@ -756,8 +767,8 @@ class QueuePane(CursedPane):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self.items[i]
-            title = get_tag('title', item) or os.path.basename(item['file'])
-            rating = item['rating']
+            title = item.get('title') or basename(item['file'])
+            rating = item.get('rating', 0)
             tm = format_time(item['time'])
 
             if i == self.cur:

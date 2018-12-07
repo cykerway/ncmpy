@@ -66,7 +66,7 @@ keysym.swapdn           =   ord('J')
 keysym.swapup           =   ord('K')
 keysym.shuffle          =   ord('e')
 keysym.play             =   ord('\n')
-keysym.rate0            =   ord('x')
+keysym.unrate           =   ord('x')
 keysym.rate1            =   ord('1')
 keysym.rate2            =   ord('2')
 keysym.rate3            =   ord('3')
@@ -92,6 +92,34 @@ keysym.paneartistalbum  =   curses.KEY_F5
 keysym.panesearch       =   curses.KEY_F6
 keysym.paneinfo         =   curses.KEY_F7
 keysym.paneoutput       =   curses.KEY_F8
+
+##  keysym groups;
+keysymgrp = namespace()
+
+##  rate keysyms;
+keysymgrp.rate = [
+    keysym.rate1, keysym.rate2, keysym.rate3, keysym.rate4, keysym.rate5,
+]
+##  seek keysyms;
+keysymgrp.seek = [
+    keysym.seekb, keysym.seekf, keysym.seekbp, keysym.seekfp,
+]
+##  local keysyms; these keysyms dont modify mpd server state and are handled
+##  locally; dont sync with mpd server when handling these keysyms;
+keysymgrp.local = [
+    ##  these keysyms are truly-local; they really dont send command to server;
+    keysym.linedn, keysym.lineup, keysym.pagedn, keysym.pageup,
+    keysym.top, keysym.mid, keysym.bot,
+    keysym.first, keysym.last,
+    ##  these keysyms are pseudo-local; they actually send command to server,
+    ##  but not immediately after we press them;
+    keysym.seekb, keysym.seekf, keysym.seekbp, keysym.seekfp,
+    keysym.swapdn, keysym.swapup,
+]
+##  search keysyms;
+keysymgrp.search = [
+    keysym.searchdn, keysym.searchup, keysym.searchnext, keysym.searchprev,
+]
 
 def name2code(name):
 

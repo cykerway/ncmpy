@@ -16,6 +16,7 @@ import time
 
 from ncmpy.config import conf
 from ncmpy.keysym import keysym as ks
+from ncmpy.keysym import keysymgrp as ksg
 from ncmpy.pane import *
 
 class Ncmpy():
@@ -171,26 +172,6 @@ class Ncmpy():
         ##  message hub for inter-pane communication;
         self.ipc = {}
 
-        ##  local keysyms; these keys dont modify mpd server state and thus are
-        ##  handled locally; dont sync with mpd server when handling these keys;
-        self.local_keysyms = [
-            ##  these keysyms are truly-local; they really dont send command to
-            ##  server;
-            ks.linedn, ks.lineup, ks.pagedn, ks.pageup,
-            ks.top, ks.mid, ks.bot,
-            ks.first, ks.last,
-
-            ##  these keysyms are pseudo-local; they actually send command to
-            ##  server, but not immediately after we press them;
-            ks.seekb, ks.seekf, ks.seekbp, ks.seekfp,
-            ks.swapdn, ks.swapup,
-        ]
-
-        ##  seek keysyms;
-        self.seek_keysyms = [
-            ks.seekb, ks.seekf, ks.seekbp, ks.seekfp,
-        ]
-
         ##  init mpd and curses;
         self._init_mpd(conf.mpd_host, conf.mpd_port)
         self._init_curses(stdscr)
@@ -229,7 +210,7 @@ class Ncmpy():
         ##  seek;
         if self.status['state'] in [ 'play', 'pause' ]:
 
-            if self.ch in self.seek_keysyms:
+            if self.ch in ksg.seek:
                 ##  enter seek mode;
                 if not self.seek:
                     self.elapsed, self.total = [
@@ -249,7 +230,7 @@ class Ncmpy():
                 ##  overwrite playback time in seek mode;
                 self.status['time'] = '{}:{}'.format(self.elapsed, self.total)
 
-                if self.ch not in self.local_keysyms:
+                if self.ch not in ksg.local:
                     ##  send seek command to server and leave seek mode;
                     self.mpc.seekid(self.status['songid'], self.elapsed)
                     self.seek = False
@@ -424,7 +405,7 @@ class Ncmpy():
             if self.ch == ks.quit:
                 self.loop = False
                 return
-            sync = (self.ch not in self.local_keysyms)
+            sync = (self.ch not in ksg.local)
         else:
             self.ch = None
             sync = True

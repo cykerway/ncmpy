@@ -7,7 +7,7 @@ util module;
 def format_time(tm):
 
     '''
-    convert time: <seconds> -> <hh:mm:ss>;
+    convert time from `{seconds}` to `{hh:mm:ss}`;
     '''
 
     if tm.isdigit():
