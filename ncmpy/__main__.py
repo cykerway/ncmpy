@@ -256,17 +256,17 @@ class Ncmpy():
 
         ##  volume control;
         if self.ch == ks.voldn:
-            new_vol = max(0, int(self.status['volume']) - 1)
+            vol = max(0, int(self.status['volume']) - 1)
             try:
-                self.mpc.setvol(new_vol)
-                self.status['volume'] = str(new_vol)
+                self.mpc.setvol(vol)
+                self.status['volume'] = str(vol)
             except mpd.CommandError as e:
                 self.ipc['msg'] = str(e)
         elif self.ch == ks.volup:
-            new_vol = min(100, int(self.status['volume']) + 1)
+            vol = min(100, int(self.status['volume']) + 1)
             try:
-                self.mpc.setvol(new_vol)
-                self.status['volume'] = str(new_vol)
+                self.mpc.setvol(vol)
+                self.status['volume'] = str(vol)
             except mpd.CommandError as e:
                 self.ipc['msg'] = str(e)
 
@@ -313,15 +313,15 @@ class Ncmpy():
             else:
                 self.ipc['msg'] = 'Playlist {} loaded'.format(name)
 
-        ##  basic search;
+        ##  search items;
         elif self.ch in [ ks.searchdn, ks.searchup ]:
             search_kw = self.message_pane.getstr('Find')
             if search_kw:
                 self.search_kw = search_kw
-                if self.ch == ks.searchdn:
-                    self.search_dr = 1
-                elif self.ch == ks.searchup:
-                    self.search_dr = -1
+                self.search_dr = {
+                    ks.searchdn: + 1,
+                    ks.searchup: - 1,
+                }[self.ch]
 
         ##  panes do round0;
         for pane in self.panes:
@@ -402,19 +402,11 @@ class Ncmpy():
 
         '''
         leave idle state;
-
-        ## return
-
-        :list
-        :   a list of changed sub systems;
         '''
 
         if self.idle:
-            subs = self.mpc.noidle()
+            self.ipc['idle'] = self.mpc.noidle()
             self.idle = False
-            return subs
-        else:
-            return []
 
     def on_event(self, type_):
 
@@ -440,7 +432,7 @@ class Ncmpy():
         self.ipc.clear()
 
         if sync:
-            self.ipc['idle'] = self.leave_idle()
+            self.leave_idle()
             if self.batch:
                 self.mpc.command_list_ok_begin()
                 for cmd in self.batch:
