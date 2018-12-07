@@ -46,7 +46,7 @@ class Ncmpy():
         curses.init_pair(2, curses.COLOR_GREEN, -1)
         curses.init_pair(3, curses.COLOR_YELLOW, -1)
 
-        ##  force a refresh; otherwise strange things happen on first key press;
+        ##  force a refresh to avoid problems on first key press;
         stdscr.refresh()
 
         ##  store main window and its size;
@@ -168,13 +168,13 @@ class Ncmpy():
         ##  pending mpd commands for batch processing;
         self.batch = []
 
-        ##  message board for inter-pane communication;
+        ##  message hub for inter-pane communication;
         self.ipc = {}
 
         ##  local keysyms; these keys dont modify mpd server state and thus are
         ##  handled locally; dont sync with mpd server when handling these keys;
         self.local_keysyms = [
-            ##  these keysyms are truly local; they really dont send command to
+            ##  these keysyms are truly-local; they really dont send command to
             ##  server;
             ks.linedn, ks.lineup, ks.pagedn, ks.pageup,
             ks.top, ks.mid, ks.bot,
@@ -182,8 +182,8 @@ class Ncmpy():
 
             ##  these keysyms are pseudo-local; they actually send command to
             ##  server, but not immediately after we press them;
-            ks.swapdn, ks.swapup,
             ks.seekb, ks.seekf, ks.seekbp, ks.seekfp,
+            ks.swapdn, ks.swapup,
         ]
 
         ##  seek keysyms;
