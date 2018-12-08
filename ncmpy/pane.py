@@ -786,27 +786,37 @@ class QueuePane(CursedPane):
         self.win.noutrefresh()
 
 class DatabasePane(CursedPane):
-    '''All songs/directories/playlists in database.'''
+
+    '''
+    display dirs, songs and playlists in database;
+
+    todo: split database pane into song pane and playlist pane;
+    '''
 
     def __init__(self, name, win, ctrl):
-        CursedPane.__init__(self, name, win, ctrl)
+        super().__init__(name, win, ctrl)
 
-        # Current dir.
+        ##  current dir;
         self.dir = ''
-        self.items = self.list_items()
+        self.items = self._list_items()
 
-    def list_items(self, keeppos=False):
+    def list_items(self, keep_pos=False):
         '''
-        List contents of current dir.
+        list contents of current dir;
 
-        This method is called when current dir changes (e.g. database update), or new items are
-        added or removed (e.g. playlist add/delete).
+        this method is called when current dir changes, or new items are added
+        or removed;
+
+        ## params
+
+        keep_pos:bool
+        :   keep current position of display and selection;
         '''
 
         items = self.mpc.lsinfo(self.dir)
         items.insert(0, {'directory' : '..'})
         self.num = len(items)
-        if keeppos:
+        if keep_pos:
             self.beg = self.clamp(self.beg)
             self.sel = self.clamp(self.sel)
         else:
@@ -907,7 +917,7 @@ class DatabasePane(CursedPane):
                     self.ipc['msg'] = str(e).rsplit('} ')[1]
                 else:
                     self.ipc['msg'] = 'Playlist {} deleted'.format(name)
-                    self.items = self.list_items(keeppos=True)
+                    self.items = self.list_items(keep_pos=True)
         elif self.ch == ord('U'):
             self.mpc.update()
         elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
@@ -940,7 +950,7 @@ class DatabasePane(CursedPane):
 
         # if a playlist is saved, rebuild view, keep original positions
         if self.ipc.get('playlist') == 'saved':
-            self.items = self.list_items(keeppos=True)
+            self.items = self.list_items(keep_pos=True)
 
     def update(self):
         self.win.erase()
