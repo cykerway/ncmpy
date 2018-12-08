@@ -1133,7 +1133,7 @@ class LyricsPane(ScrollPane, threading.Thread):
     def update(self):
         self.win.erase()
         attr = curses.A_BOLD | curses.color_pair(3)
-        for i in range(self.beg, min(self.beg + self.height, self.num)):
+        for i in range(self.beg, min(self.num, self.beg + self.height)):
             if i == self.cur:
                 self.win.insstr(i - self.beg, 0, self._ltexts[i], attr)
             else:
