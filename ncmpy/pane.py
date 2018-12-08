@@ -7,7 +7,6 @@ pane module;
 from os.path import basename
 from os.path import dirname
 import curses
-import locale
 import mpd
 import os
 import threading

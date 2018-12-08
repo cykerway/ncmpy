@@ -5,12 +5,11 @@ config module;
 '''
 
 from os.path import expanduser
-from os.path import isfile
 from types import SimpleNamespace as namespace
 import yaml
 
 from ncmpy.keysym import keysym as ks
-from ncmpy.keysym import name2code
+from ncmpy.keysym import name2code as n2c
 
 ##  config;
 conf = namespace()
@@ -46,7 +45,7 @@ for fname in [
     if data.get('keysym') is not None:
         for sym, name in data.get('keysym').items():
             if hasattr(ks, sym):
-                setattr(ks, sym, name2code(name))
+                setattr(ks, sym, n2c(name))
             else:
                 raise Exception('invalid keysym: {}'.format(sym))
 
