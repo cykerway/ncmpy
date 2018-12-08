@@ -171,16 +171,16 @@ class ScrollPane(BlockPane):
         self.beg = 0
 
     def line_down(self):
-        self.beg = min(self.num - self.height, self.beg + 1)
+        self.beg = max(0, min(self.num - self.height, self.beg + 1))
 
     def line_up(self):
-        self.beg = max(0, self.beg - 1)
+        self.beg = max(0, min(self.num - self.height, self.beg - 1))
 
     def page_down(self):
-        self.beg = min(self.num - self.height, self.beg + self.height)
+        self.beg = max(0, min(self.num - self.height, self.beg + self.height))
 
     def page_up(self):
-        self.beg = max(0, self.beg - self.height)
+        self.beg = max(0, min(self.num - self.height, self.beg - self.height))
 
     def locate(self, pos):
         self.beg = max(0, min(self.num - self.height, pos - self.height // 2))
@@ -751,6 +751,8 @@ class QueuePane(CursedPane):
             self.ipc['queue-selected'] = self.items[self.sel]
 
     def round1(self):
+        super().round1()
+
         uri = self.ipc.get('queue-locate')
         if uri:
             for i in range(len(self.items)):
@@ -933,6 +935,8 @@ class DatabasePane(CursedPane):
         self.ipc['database-selected'] = self.items[self.sel].get('file')
 
     def round1(self):
+        super().round1()
+
         ##  if we need to locate a file in database, then rebuild item list
         ##  using item parent dir as display dir, and search for the file;
         uri = self.ipc.get('database-locate')
@@ -1098,6 +1102,8 @@ class LyricsPane(ScrollPane, threading.Thread):
         return cur
 
     def round1(self):
+        super().round1()
+
         # output 'Updating...' if cannot acquire lock
         if self._cv.acquire(blocking=0):
             # if worker reports lyrics fetched
@@ -1472,6 +1478,8 @@ class InfoPane(ScrollPane):
             self.page_up()
 
     def round1(self):
+        super().round1()
+
         ##  get info about songs;
         self._cp = self.currentsong
         self._siq = self.ipc.get('queue-selected', {})
