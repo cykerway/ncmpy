@@ -1320,7 +1320,7 @@ class SearchPane(CursedPane):
             name, value = search_kw.split('=', 1)
             items = self.mpc.find(name, value) or []
             self.ipc['msg'] = 'Found {} results'.format(len(items))
-        except:
+        except mpd.CommandError:
             items = []
             self.ipc['msg'] = 'Search query format: {key}={value}'
 

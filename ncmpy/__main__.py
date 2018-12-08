@@ -17,7 +17,22 @@ import time
 from ncmpy.config import conf
 from ncmpy.keysym import keysym as ks
 from ncmpy.keysym import keysymgrp as ksg
-from ncmpy.pane import *
+from ncmpy.pane import ArtistAlbumPane
+from ncmpy.pane import BarPane
+from ncmpy.pane import CursedPane
+from ncmpy.pane import DatabasePane
+from ncmpy.pane import HelpPane
+from ncmpy.pane import InfoPane
+from ncmpy.pane import LinePane
+from ncmpy.pane import LyricsPane
+from ncmpy.pane import MenuPane
+from ncmpy.pane import MessagePane
+from ncmpy.pane import OutputPane
+from ncmpy.pane import ProgressPane
+from ncmpy.pane import QueuePane
+from ncmpy.pane import ScrollPane
+from ncmpy.pane import SearchPane
+from ncmpy.pane import StatusPane
 
 class Ncmpy():
 
