@@ -638,7 +638,7 @@ class QueuePane(CursedPane):
                     try:
                         sticker = self.mpc.sticker_get(
                             'song', song['file'], 'rating')
-                        rating = int(sticker.split('=', 1)[1])
+                        rating = int(sticker)
                     except mpd.CommandError:
                         rating = 0
                     finally:
