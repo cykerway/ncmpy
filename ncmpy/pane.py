@@ -1164,95 +1164,99 @@ class LyricsPane(ScrollPane, threading.Thread):
             self._osong = self._nsong
 
 class ArtistAlbumPane(CursedPane):
-    '''List artists/albums in database.'''
+
+    '''
+    display artists and albums;
+    '''
 
     def __init__(self, name, win, ctrl):
-        CursedPane.__init__(self, name, win, ctrl)
+        super().__init__(name, win, ctrl)
 
-        # current displayed dir
         self._type = 'artist'
         self._artist = None
         self._album = None
-        self.items = self.build()
+        self.items = self._list_items()
 
-    def build(self):
-        '''Build view using self._type, self._artist and self._album.
-
-        A view is rebuilt when self._type changes.'''
-
+    def _list_items(self):
         if self._type == 'artist':
-            view = self.mpc.list('artist')
+            items = self.mpc.list('artist')
         elif self._type == 'album':
-            view = self._artist and self.mpc.list('album', self._artist) or []
+            items = self.mpc.list('album', self._artist) if self._artist else []
         elif self._type == 'song':
-            view = self._album and self.mpc.find('album', self._album) or []
+            items = self.mpc.find('album', self._album) if self._album else []
 
-        self.num = len(view)
+        self.num = len(items)
         self.beg = 0
         self.sel = 0
-        return view
+        return items
+
+    def fetch(self):
+        super().fetch()
+
+        if 'database' in self.ipc.get('idle', []):
+            self._type = 'artist'
+            self.items = self._list_items()
+            self.ipc['msg'] = 'Database updated.'
 
     def round0(self):
         super().round0()
 
-        if self.ch == ord('j'):
+        if self.ch == ks.linedn:
             self.line_down()
-        elif self.ch == ord('k'):
+        elif self.ch == ks.lineup:
             self.line_up()
-        elif self.ch == ord('f'):
+        elif self.ch == ks.pagedn:
             self.page_down()
-        elif self.ch == ord('b'):
+        elif self.ch == ks.pageup:
             self.page_up()
-        elif self.ch == ord('H'):
+        elif self.ch == ks.top:
             self.select_top()
-        elif self.ch == ord('M'):
+        elif self.ch == ks.mid:
             self.select_mid()
-        elif self.ch == ord('L'):
+        elif self.ch == ks.bot:
             self.select_bot()
-        elif self.ch == ord('g'):
+        elif self.ch == ks.first:
             self.select_first()
-        elif self.ch == ord('G'):
+        elif self.ch == ks.last:
             self.select_last()
-        elif self.ch == ord('\''):
+        elif self.ch == ks.parent:
             if self._type == 'artist':
                 pass
             elif self._type == 'album':
                 self._type = 'artist'
-                self.items = self.build()
-                for i in range(len(self.items)):
+                self.items = self._list_items()
+                for i in range(self.num):
                     if self.items[i] == self._artist:
                         self.locate(i)
                         break
             elif self._type == 'song':
                 self._type = 'album'
-                self.items = self.build()
-                for i in range(len(self.items)):
+                self.items = self._list_items()
+                for i in range(self.num):
                     if self.items[i] == self._album:
                         self.locate(i)
                         break
-        elif self.ch == ord('"'):
+        elif self.ch == ks.root:
             self._type = 'artist'
-            self.items = self.build()
-        elif self.ch == ord('\n'):
+            self.items = self._list_items()
+        elif self.ch == ks.play:
             item = self.items[self.sel]
             if self._type == 'artist':
                 self._artist = item
                 self._type = 'album'
-                self.items = self.build()
+                self.items = self._list_items()
             elif self._type == 'album':
                 self._album = item
                 self._type = 'song'
-                self.items = self.build()
+                self.items = self._list_items()
             elif self._type == 'song':
                 uri = item['file']
                 songs = self.mpc.playlistfind('file', uri)
-                if songs:
-                    self.mpc.playid(songs[0]['id'])
-                else:
+                if not songs:
                     self.mpc.add(uri)
-                    song = self.mpc.playlistfind('file', uri)[0]
-                    self.mpc.playid(song['id'])
-        elif self.ch == ord('a'):
+                    songs = self.mpc.playlistfind('file', uri)
+                self.mpc.playid(songs[0]['id'])
+        elif self.ch == ks.add:
             item = self.items[self.sel]
             if self._type == 'artist':
                 self.mpc.findadd('artist', item)
@@ -1260,30 +1264,24 @@ class ArtistAlbumPane(CursedPane):
                 self.mpc.findadd('album', item)
             elif self._type == 'song':
                 self.mpc.add(item['file'])
-        elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
+        elif self.ch in ksg.search:
             self.search(self.name, self.ch)
-        elif self.ch == ord(';'):
-            # tell QUEUE we want to locate a song
+        elif self.ch == ks.dblocate:
+            ##  locate a song in queue;
             if self._type == 'song':
                 item = self.items[self.sel]
                 self.ipc['queue-locate'] = item.get('file')
             else:
                 self.ipc['msg'] = 'No song selected'
 
-    def round1(self):
-        if 'database' in self.ipc.get('idle', []):
-            self._type = 'artist'
-            self.items = self.build()
-
     def update(self):
         self.win.erase()
-        for i in range(self.beg, min(self.beg + self.height, self.num)):
+        for i in range(self.beg, min(self.num, self.beg + self.height)):
             item = self.items[i]
-
-            if self._type in ['artist', 'album']:
-                val = item
+            if self._type in [ 'artist', 'album' ]:
+                title = item
             elif self._type == 'song':
-                val = get_tag('title', item) or os.path.basename(item.get('file'))
+                title = get_tag('title', item) or basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
@@ -1292,7 +1290,7 @@ class ArtistAlbumPane(CursedPane):
             elif self._type == 'album':
                 self.win.attron(curses.color_pair(2) | curses.A_BOLD)
             self.win.hline(i - self.beg, 0, ' ', self.width)
-            self.win.insstr(i - self.beg, 0, val)
+            self.win.insstr(i - self.beg, 0, title)
             if self._type == 'artist':
                 self.win.attroff(curses.color_pair(1) | curses.A_BOLD)
             elif self._type == 'album':
@@ -1302,71 +1300,68 @@ class ArtistAlbumPane(CursedPane):
         self.win.noutrefresh()
 
 class SearchPane(CursedPane):
-    '''Search in the database.'''
+
+    '''
+    search in database;
+    '''
 
     def __init__(self, name, win, ctrl):
-        CursedPane.__init__(self, name, win, ctrl)
-
+        super().__init__(name, win, ctrl)
         self.items = []
 
-    def build(self, kw):
-        '''Build view using search keywords.'''
-
+    def _list_items(self, search_kw):
         try:
-            name, value = kw.split(':', 1)
-            view = self.mpc.find(name, value) or []
-            if not view:
-                self.ipc['msg'] = 'Nothing found :('
+            name, value = search_kw.split('=', 1)
+            items = self.mpc.find(name, value) or []
+            self.ipc['msg'] = 'Found {} results'.format(len(items))
         except:
-            view = []
-            self.ipc['msg'] = 'Syntax is <tag_name>:<tag_value>'
+            items = []
+            self.ipc['msg'] = 'Search query format: {key}={value}'
 
-        self.num = len(view)
+        self.num = len(items)
         self.beg = 0
         self.sel = 0
-        return view
+        return items
 
     def round0(self):
         super().round0()
 
-        if self.ch == ord('j'):
+        if self.ch == ks.linedn:
             self.line_down()
-        elif self.ch == ord('k'):
+        elif self.ch == ks.lineup:
             self.line_up()
-        elif self.ch == ord('f'):
+        elif self.ch == ks.pagedn:
             self.page_down()
-        elif self.ch == ord('b'):
+        elif self.ch == ks.pageup:
             self.page_up()
-        elif self.ch == ord('H'):
+        elif self.ch == ks.top:
             self.select_top()
-        elif self.ch == ord('M'):
+        elif self.ch == ks.mid:
             self.select_mid()
-        elif self.ch == ord('L'):
+        elif self.ch == ks.bot:
             self.select_bot()
-        elif self.ch == ord('g'):
+        elif self.ch == ks.first:
             self.select_first()
-        elif self.ch == ord('G'):
+        elif self.ch == ks.last:
             self.select_last()
-        elif self.ch == ord('B'):
-            self.items = self.build(
+        elif self.ch == ks.search:
+            self.items = self._list_items(
                 self.ctrl.message_pane.getstr('Database Search'))
-        elif self.ch == ord('\n'):
+        elif self.ch == ks.play:
             item = self.items[self.sel]
             uri = item['file']
             songs = self.mpc.playlistfind('file', uri)
-            if songs:
-                self.mpc.playid(songs[0]['id'])
-            else:
+            if not songs:
                 self.mpc.add(uri)
-                song = self.mpc.playlistfind('file', uri)[0]
-                self.mpc.playid(song['id'])
-        elif self.ch == ord('a'):
+                songs = self.mpc.playlistfind('file', uri)
+            self.mpc.playid(songs[0]['id'])
+        elif self.ch == ks.add:
             item = self.items[self.sel]
             self.mpc.add(item['file'])
-        elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
+        elif self.ch in ksg.search:
             self.search(self.name, self.ch)
-        elif self.ch == ord(';'):
-            # tell QUEUE we want to locate a song
+        elif self.ch == ks.dblocate:
+            ##  locate a song in queue;
             if self.sel < self.num:
                 item = self.items[self.sel]
                 self.ipc['queue-locate'] = item.get('file')
@@ -1377,13 +1372,12 @@ class SearchPane(CursedPane):
         self.win.erase()
         for i in range(self.beg, min(self.beg + self.height, self.num)):
             item = self.items[i]
-
-            val = get_tag('title', item) or os.path.basename(item.get('file'))
+            title = get_tag('title', item) or basename(item.get('file'))
 
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
             self.win.hline(i - self.beg, 0, ' ', self.width)
-            self.win.insstr(i - self.beg, 0, val)
+            self.win.insstr(i - self.beg, 0, title)
             if i == self.sel:
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
