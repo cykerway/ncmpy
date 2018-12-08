@@ -1383,168 +1383,180 @@ class SearchPane(CursedPane):
         self.win.noutrefresh()
 
 class InfoPane(ScrollPane):
-    '''Information about songs:
 
-        currently playing
-        currently selected in queue
-        currently selected in database'''
+    '''
+    display info about songs and database:
+
+    -   currently playing;
+    -   selected in queue;
+    -   selected in database;
+    '''
 
     def __init__(self, name, win, ctrl):
-        ScrollPane.__init__(self, name, win, ctrl)
-        # current playing
+        super().__init__(name, win, ctrl)
+
+        ##  current playing;
         self._cp = {}
-        # selected in queue
+        ##  selected in queue;
         self._siq = {}
-        # selected in database
+        ##  selected in database;
         self._sid = {}
-        # database.sel's uri cache
+
+        ##  database.sel's uri cache;
         self._dburi = None
+
         self.lines = [
-                ('group', 'Currently Playing', None),
-                ('hline', None, None),
-                ('item', 'Title', ''),
-                ('item', 'Artist', ''),
-                ('item', 'Album', ''),
-                ('item', 'Track', ''),
-                ('item', 'Genre', ''),
-                ('item', 'Date', ''),
-                ('item', 'Time', ''),
-                ('item', 'File', ''),
-                ('blank', None, None),
-
-                ('group', 'Currently Selected in Queue', None),
-                ('hline', None, None),
-                ('item', 'Title', ''),
-                ('item', 'Artist', ''),
-                ('item', 'Album', ''),
-                ('item', 'Track', ''),
-                ('item', 'Genre', ''),
-                ('item', 'Date', ''),
-                ('item', 'Time', ''),
-                ('item', 'File', ''),
-                ('blank', None, None),
-
-                ('group', 'Currently Selected in Database', None),
-                ('hline', None, None),
-                ('item', 'Title', ''),
-                ('item', 'Artist', ''),
-                ('item', 'Album', ''),
-                ('item', 'Track', ''),
-                ('item', 'Genre', ''),
-                ('item', 'Date', ''),
-                ('item', 'Time', ''),
-                ('item', 'File', ''),
-                ('blank', None, None),
-
-                ('group', 'MPD Statistics', None),
-                ('hline', None, None),
-                ('item', 'NumberofSongs', ''),
-                ('item', 'NumberofArtists', ''),
-                ('item', 'NumberofAlbums', ''),
-                ('item', 'Uptime', ''),
-                ('item', 'Playtime', ''),
-                ('item', 'DBPlaytime', ''),
-                ('item', 'DBUpdateTime', ''),
-                ('blank', None, None),
-                ]
-        self.lines_d = None
-        self._song_key_list = ['Title', 'Artist', 'Album', 'Track', 'Genre', 'Date', 'Time', 'File']
-        self._stats_key_list = [\
-                'Songs', 'Artists', 'Albums', 'Uptime', 'Playtime', 'DB_Playtime', 'DB_Update']
+            ['head', 'currently playing'    , ''],
+            ['line', ''                     , ''],
+            ['item', 'title'                , ''],
+            ['item', 'artist'               , ''],
+            ['item', 'album'                , ''],
+            ['item', 'track'                , ''],
+            ['item', 'genre'                , ''],
+            ['item', 'date'                 , ''],
+            ['item', 'time'                 , ''],
+            ['item', 'file'                 , ''],
+            ['void', ''                     , ''],
+            ['head', 'selected in queue'    , ''],
+            ['line', ''                     , ''],
+            ['item', 'title'                , ''],
+            ['item', 'artist'               , ''],
+            ['item', 'album'                , ''],
+            ['item', 'track'                , ''],
+            ['item', 'genre'                , ''],
+            ['item', 'date'                 , ''],
+            ['item', 'time'                 , ''],
+            ['item', 'file'                 , ''],
+            ['void', ''                     , ''],
+            ['head', 'selected in database' , ''],
+            ['line', ''                     , ''],
+            ['item', 'title'                , ''],
+            ['item', 'artist'               , ''],
+            ['item', 'album'                , ''],
+            ['item', 'track'                , ''],
+            ['item', 'genre'                , ''],
+            ['item', 'date'                 , ''],
+            ['item', 'time'                 , ''],
+            ['item', 'file'                 , ''],
+            ['void', ''                     , ''],
+            ['head', 'mpd statistics'       , ''],
+            ['line', ''                     , ''],
+            ['item', 'songs'                , ''],
+            ['item', 'artists'              , ''],
+            ['item', 'albums'               , ''],
+            ['item', 'uptime'               , ''],
+            ['item', 'playtime'             , ''],
+            ['item', 'db_playtime'          , ''],
+            ['item', 'db_update'            , ''],
+            ['void', ''                     , ''],
+        ]
+        self._song_keys = [
+            'title', 'artist', 'album', 'track', 'genre', 'date', 'time',
+            'file',
+        ]
+        self._stats_keys = [
+            'songs', 'artists', 'albums', 'uptime', 'playtime', 'db_playtime',
+            'db_update',
+        ]
 
     def round0(self):
         super().round0()
 
-        if self.ch == ord('j'):
+        if self.ch == ks.linedn:
             self.line_down()
-        elif self.ch == ord('k'):
+        elif self.ch == ks.lineup:
             self.line_up()
-        elif self.ch == ord('f'):
+        elif self.ch == ks.pagedn:
             self.page_down()
-        elif self.ch == ord('b'):
+        elif self.ch == ks.pageup:
             self.page_up()
 
     def round1(self):
-        # get song info.
-
-        # cp = currently playing
-        # siq = selected in queue
-        # sid = selected in database
-
-        # on success, _cp and _siq are nonempty dicts.
-        # on failure, _cp and _siq are empty dicts.
+        ##  get info about songs;
         self._cp = self.currentsong
+        self._siq = self.ipc.get('queue-selected', {})
         try:
-            self._siq = self.ipc.get('queue-selected') or {}
-        except (mpd.CommandError, IndexError):
-            self._siq = {}
-        try:
-            uri = self.ipc.get('database-selected')
-            if uri and uri != self._dburi and not self.ctrl.idle:
+            uri = self.ipc.get('database-selected', {})
+            if uri and not self.ctrl.idle:
                 self._sid = self.mpc.listallinfo(uri)[0]
         except (mpd.CommandError, IndexError):
             self._sid = {}
 
-        # setup sub lists
-        cp_list = [('item', k, self._cp.get(k.lower()) or '') for k in self._song_key_list]
-        siq_list = [('item', k, self._siq.get(k.lower()) or '') for k in self._song_key_list]
-        sid_list = [('item', k, self._sid.get(k.lower()) or '') for k in self._song_key_list]
-        stats_list = [('item', k, self.stats.get(k.lower()) or '') for k in self._stats_key_list]
+        ##  build lists;
+        cp_list = [
+            ['item', k, self._cp.get(k, '')] for k in self._song_keys
+        ]
+        siq_list = [
+            ['item', k, self._siq.get(k, '')] for k in self._song_keys
+        ]
+        sid_list = [
+            ['item', k, self._sid.get(k, '')] for k in self._song_keys
+        ]
+        stats_list = [
+            ['item', k, self.stats.get(k, '')] for k in self._stats_keys
+        ]
 
-        # convert list (multi-tags)  to str
-        for l in (cp_list, siq_list, sid_list):
+        for l in [ cp_list, siq_list, sid_list ]:
             for i in range(6):
-                l[i] = (l[i][0], l[i][1], \
-                        isinstance(l[i][2], str) and l[i][2] or ', '.join(l[i][2]))
+                ##  if tag value is list, convert to str;
+                if not isinstance(l[i][2], str):
+                    l[i][2] = ', '.join(l[i][2])
+            ##  format time;
+            l[6][2] = format_time(l[6][2])
 
-        # format time
-        for l in (cp_list, siq_list, sid_list):
-            l[6] = (l[6][0], l[6][1], format_time(l[6][2]))
-        for i in range(3, 6):
-            stats_list[i] = (stats_list[i][0], stats_list[i][1], format_time(stats_list[i][2]))
-        stats_list[6] = (stats_list[6][0], stats_list[6][1], \
-                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(stats_list[6][2]))))
+        for l in [ stats_list ]:
+            for i in range(3, 6):
+                ##  format time;
+                l[i][2] = format_time(l[i][2])
+            ##  format time;
+            l[6][2] = time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime(int(l[6][2])))
 
-        # merge into ctrl list
+        ##  merge into ctrl list;
         self.lines[2:10] = cp_list
         self.lines[13:21] = siq_list
         self.lines[24:32] = sid_list
         self.lines[35:42] = stats_list
 
-        # set up options display
         self.lines_d = self.lines[:]
-        # breakup file paths
-        for k in (31, 20, 9):
-            self.lines_d[k:k+1] = [('item', '', '/' + i) for i in self.lines[k][2].split('/')]
-            self.lines_d[k] = ('item', 'File', self.lines_d[k][2][1:])
+        for k in [ 31, 20, 9 ]:
+            ##  breakup file paths;
+            self.lines_d[k:k+1] = [
+                [ 'item', '', '/' + i ] for i in self.lines[k][2].split('/')
+            ]
+            ##  strip leading slash;
+            self.lines_d[k] = [ 'item', 'file', self.lines_d[k][2][1:] ]
 
         self.num = len(self.lines_d)
 
     def update(self):
         self.win.erase()
-        for i in range(self.beg, min(self.beg + self.height, self.num)):
-            line = self.lines_d[i]
-            if line[0] == 'group':
-                self.win.insstr(i - self.beg, 6, line[1], curses.A_BOLD)
-            elif line[0] == 'hline':
+        for i in range(self.beg, min(self.num, self.beg + self.height)):
+            l = self.lines_d[i]
+            if l[0] == 'head':
+                self.win.insstr(i - self.beg, 4, l[1], curses.A_BOLD)
+            elif l[0] == 'line':
                 self.win.attron(curses.A_BOLD)
-                self.win.hline(i - self.beg, 3, '-', self.width - 6)
+                self.win.hline(i - self.beg, 4, '-', self.width - 8)
                 self.win.attroff(curses.A_BOLD)
-            elif line[0] == 'item':
-                self.win.insstr(i - self.beg, 0, line[1].rjust(20) + ' : ' + line[2])
-            elif line[0] == 'blank':
+            elif l[0] == 'item':
+                self.win.insstr(i - self.beg, 0, l[1].rjust(16) + ' : ' + l[2])
+            elif l[0] == 'void':
                 pass
         self.win.noutrefresh()
 
 class OutputPane(CursedPane):
-    '''Output pane.'''
+
+    '''
+    display outputs;
+    '''
 
     def __init__(self, name, win, ctrl):
-        CursedPane.__init__(self, name, win, ctrl)
+        super().__init__(name, win, ctrl)
         self.outputs = []
 
     def fetch(self):
-        CursedPane.fetch(self)
+        super().fetch()
 
         self.outputs = self.mpc.outputs()
         self.num = len(self.outputs)
@@ -1554,15 +1566,15 @@ class OutputPane(CursedPane):
     def round0(self):
         super().round0()
 
-        if self.ch == ord('j'):
+        if self.ch == ks.linedn:
             self.line_down()
-        elif self.ch == ord('k'):
+        elif self.ch == ks.lineup:
             self.line_up()
-        elif self.ch == ord('f'):
+        elif self.ch == ks.pagedn:
             self.page_down()
-        elif self.ch == ord('b'):
+        elif self.ch == ks.pageup:
             self.page_up()
-        elif self.ch == ord('t'):
+        elif self.ch == ks.toggle:
             output = self.outputs[self.sel]
             output_id = int(output['outputid'])
             output_enabled = int(output['outputenabled'])
@@ -1575,22 +1587,16 @@ class OutputPane(CursedPane):
 
     def update(self):
         self.win.erase()
-
-        for i in range(self.beg, min(self.beg + self.height, self.num)):
+        for i in range(self.beg, min(self.num, self.beg + self.height)):
             item = self.outputs[i]
-
             if i == self.sel:
                 self.win.attron(curses.A_REVERSE)
-
-            enabled_str = '[{}]'.format('o' if int(item['outputenabled']) else 'x')
-            name_str = item['outputname']
-            item_str = '{} {}'.format(enabled_str, name_str)
-
+            enabled = '[{}]'.format('o' if int(item['outputenabled']) else 'x')
+            name = item['outputname']
+            item_str = '{} {}'.format(enabled, name)
             self.win.hline(i - self.beg, 0, ' ', self.width)
             self.win.insstr(i - self.beg, 0, item_str)
-
             if i == self.sel:
                 self.win.attroff(curses.A_REVERSE)
-
         self.win.noutrefresh()
 
