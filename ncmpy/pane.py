@@ -1036,7 +1036,7 @@ class LyricsPane(ScrollPane, threading.Thread):
             return tag.replace(' ', '').lower()
 
     def fetch(self):
-        ScrollPane.fetch(self)
+        super().fetch()
 
         song = self.currentsong
 
