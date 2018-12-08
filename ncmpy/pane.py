@@ -5,6 +5,7 @@ pane module;
 '''
 
 from os.path import basename
+from os.path import dirname
 import curses
 import locale
 import mpd
@@ -277,7 +278,7 @@ class CursedPane(BlockPane):
             i = k % len(self.items)
             item = self.items[i]
 
-            if pane_name in ['Queue', 'Search']:
+            if pane_name in [ 'Queue', 'Search' ]:
                 title = get_tag('title', item) or basename(item['file'])
             elif pane_name == 'Database':
                 title = list(item.values())[0]
@@ -800,7 +801,7 @@ class DatabasePane(CursedPane):
         self.dir = ''
         self.items = self._list_items()
 
-    def list_items(self, keep_pos=False):
+    def _list_items(self, keep_pos=False):
         '''
         list contents of current dir;
 
@@ -825,71 +826,69 @@ class DatabasePane(CursedPane):
         return items
 
     def fetch(self):
-        CursedPane.fetch(self)
+        super().fetch()
 
+        ##  database is changed;
         if 'database' in self.ipc.get('idle', []):
             self.dir = ''
-            self.items = self.list_items()
+            self.items = self._list_items()
             self.ipc['msg'] = 'Database updated.'
 
     def round0(self):
         super().round0()
 
-        if self.ch == ord('j'):
+        if self.ch == ks.linedn:
             self.line_down()
-        elif self.ch == ord('k'):
+        elif self.ch == ks.lineup:
             self.line_up()
-        elif self.ch == ord('f'):
+        elif self.ch == ks.pagedn:
             self.page_down()
-        elif self.ch == ord('b'):
+        elif self.ch == ks.pageup:
             self.page_up()
-        elif self.ch == ord('H'):
+        elif self.ch == ks.top:
             self.select_top()
-        elif self.ch == ord('M'):
+        elif self.ch == ks.mid:
             self.select_mid()
-        elif self.ch == ord('L'):
+        elif self.ch == ks.bot:
             self.select_bot()
-        elif self.ch == ord('g'):
+        elif self.ch == ks.first:
             self.select_first()
-        elif self.ch == ord('G'):
+        elif self.ch == ks.last:
             self.select_last()
-        elif self.ch == ord('\''):
-            oldroot = self.dir
-            self.dir = os.path.dirname(self.dir)
-            self.items = self.list_items()
-            for i in range(len(self.items)):
-                if self.items[i].get('directory') == oldroot:
+        elif self.ch == ks.parent:
+            old_dir = self.dir
+            self.dir = dirname(self.dir)
+            self.items = self._list_items()
+            for i in range(self.num):
+                if self.items[i].get('directory') == old_dir:
                     self.locate(i)
                     break
-        elif self.ch == ord('"'):
+        elif self.ch == ks.root:
             self.dir = ''
-            self.items = self.list_items()
-        elif self.ch == ord('\n'):
+            self.items = self._list_items()
+        elif self.ch == ks.play:
             item = self.items[self.sel]
-            if ('directory' in item):
+            if 'directory' in item:
                 uri = item['directory']
                 if uri == '..':
-                    oldroot = self.dir
-                    self.dir = os.path.dirname(self.dir)
-                    self.items = self.list_items()
-                    for i in range(len(self.items)):
-                        if self.items[i].get('directory') == oldroot:
+                    old_dir = self.dir
+                    self.dir = dirname(self.dir)
+                    self.items = self._list_items()
+                    for i in range(self.num):
+                        if self.items[i].get('directory') == old_dir:
                             self.locate(i)
                             break
                 else:
                     self.dir = uri
-                    self.items = self.list_items()
-
-            elif ('file' in item):
+                    self.items = self._list_items()
+            elif 'file' in item:
                 uri = item['file']
                 songs = self.mpc.playlistfind('file', uri)
-                if songs:
-                    self.mpc.playid(songs[0]['id'])
-                else:
+                if not songs:
                     self.mpc.add(uri)
-                    song = self.mpc.playlistfind('file', uri)[0]
-                    self.mpc.playid(song['id'])
-            elif ('playlist' in item):
+                    songs = self.mpc.playlistfind('file', uri)
+                self.mpc.playid(songs[0]['id'])
+            elif 'playlist' in item:
                 name = item['playlist']
                 try:
                     self.mpc.load(name)
@@ -897,19 +896,19 @@ class DatabasePane(CursedPane):
                     self.ipc['msg'] = str(e).rsplit('} ')[1]
                 else:
                     self.ipc['msg'] = 'Playlist {} loaded'.format(name)
-        elif self.ch == ord('a'):
+        elif self.ch == ks.add:
             item = self.items[self.sel]
-            if ('directory' in item):
+            if 'directory' in item:
                 uri = item['directory']
             else:
                 uri = item['file']
             if uri == '..':
-                self.mpc.add(os.path.dirname(self.dir))
+                self.mpc.add(dirname(self.dir))
             else:
                 self.mpc.add(uri)
-        elif self.ch == ord('d'):
+        elif self.ch == ks.delete:
             item = self.items[self.sel]
-            if ('playlist' in item):
+            if 'playlist' in item:
                 name = item['playlist']
                 try:
                     self.mpc.rm(name)
@@ -917,50 +916,49 @@ class DatabasePane(CursedPane):
                     self.ipc['msg'] = str(e).rsplit('} ')[1]
                 else:
                     self.ipc['msg'] = 'Playlist {} deleted'.format(name)
-                    self.items = self.list_items(keep_pos=True)
-        elif self.ch == ord('U'):
+                    self.items = self._list_items(keep_pos=True)
+        elif self.ch == ks.update:
             self.mpc.update()
-        elif self.ch in [ord('/'), ord('?'), ord('n'), ord('N')]:
+        elif self.ch in ksg.search:
             self.search(self.name, self.ch)
-        elif self.ch == ord(';'):
-            # tell QUEUE we want to locate a song
+        elif self.ch == ks.dblocate:
+            ##  locate a song in queue;
             item = self.items[self.sel]
-            if ('file' in item):
+            if 'file' in item:
                 self.ipc['queue-locate'] = item.get('file')
             else:
                 self.ipc['msg'] = 'No song selected'
 
-        # Record selected song in borard.
+        ##  record selected song;
         self.ipc['database-selected'] = self.items[self.sel].get('file')
 
     def round1(self):
-        # if there's a path request, rebuild view, using
-        # dirname(path) as display dir, and search for the
-        # requested song.
+        ##  if we need to locate a file in database, then rebuild item list
+        ##  using item parent dir as display dir, and search for the file;
         uri = self.ipc.get('database-locate')
         if uri:
-            self.dir = os.path.dirname(uri)
-            self.items = self.list_items()
-            for i in range(len(self.items)):
+            self.dir = dirname(uri)
+            self.items = self._list_items()
+            for i in range(self.num):
                 if self.items[i].get('file') == uri:
                     self.locate(i)
                     break
             else:
                 self.ipc['msg'] = 'Not found in database'
 
-        # if a playlist is saved, rebuild view, keep original positions
+        ##  if a playlist is saved, then rebuild item list;
         if self.ipc.get('playlist') == 'saved':
-            self.items = self.list_items(keep_pos=True)
+            self.items = self._list_items(keep_pos=True)
 
     def update(self):
         self.win.erase()
-        for i in range(self.beg, min(self.beg + self.height, self.num)):
+        for i in range(self.beg, min(self.num, self.beg + self.height)):
             item = self.items[i]
-            if ('directory' in item):
+            if 'directory' in item:
                 t, uri = 'directory', item['directory']
-            elif ('file' in item):
+            elif 'file' in item:
                 t, uri = 'file', item['file']
-            elif ('playlist' in item):
+            elif 'playlist' in item:
                 t, uri = 'playlist', item['playlist']
 
             if i == self.sel:
@@ -970,7 +968,7 @@ class DatabasePane(CursedPane):
             elif t == 'playlist':
                 self.win.attron(curses.color_pair(2) | curses.A_BOLD)
             self.win.hline(i - self.beg, 0, ' ', self.width)
-            self.win.insstr(i - self.beg, 0, os.path.basename(uri))
+            self.win.insstr(i - self.beg, 0, basename(uri))
             if t == 'directory':
                 self.win.attroff(curses.color_pair(1) | curses.A_BOLD)
             elif t == 'playlist':
@@ -980,7 +978,12 @@ class DatabasePane(CursedPane):
         self.win.noutrefresh()
 
 class LyricsPane(ScrollPane, threading.Thread):
-    '''Display lyrics.'''
+
+    '''
+    display lyrics;
+
+    todo:
+    '''
 
     def __init__(self, name, win, ctrl):
         ##  todo: there is a subtle bug: `theading.Thread` has a `name` field,
