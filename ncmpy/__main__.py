@@ -476,7 +476,7 @@ class Ncmpy():
         if signum == signal.SIGWINCH:
             self.resize()
             ##  consume `KEY_RESIZE`;
-            self.on_event('stdin')
+            self.stdscr.getch()
 
 def _main(stdscr):
 
