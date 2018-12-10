@@ -5,6 +5,7 @@ main module;
 '''
 
 from curses import wrapper
+from threading import Condition
 import curses
 import locale
 import mpd
@@ -29,6 +30,7 @@ from ncmpy.pane import ProgressPane
 from ncmpy.pane import QueuePane
 from ncmpy.pane import SearchPane
 from ncmpy.pane import StatusPane
+from ncmpy.thread import LyricsThread
 
 class Ncmpy():
 
@@ -131,6 +133,9 @@ class Ncmpy():
         ##  prev pane;
         self.ppane = None
 
+    def _init_threads(self):
+        self.lyrics_thread = LyricsThread(self)
+
     def __init__(self, stdscr):
 
         ##  loop flag;
@@ -180,18 +185,23 @@ class Ncmpy():
         ##  pending mpd commands for batch processing;
         self.batch = []
 
-        ##  message hub for inter-pane communication;
+        ##  shared data storage for inter-pane communication;
         self.ipc = {}
 
-        ##  init mpd and curses;
+        ##  shared data storage for inter-thread communication;
+        self.itc = {}
+
+        ##  condition variable for inter-thread communication;
+        self.itc_cond = Condition()
+
+        ##  init components;
         self._init_mpd(conf.mpd_host, conf.mpd_port)
         self._init_curses(stdscr)
         self._init_panes()
+        self._init_threads()
 
         ##  start lyrics thread;
-        ##
-        ##  todo: move thread out of the pane;
-        self.lyrics_pane.start()
+        self.lyrics_thread.start()
 
         ##  setup signal handler;
         signal.signal(signal.SIGWINCH, self.handler)

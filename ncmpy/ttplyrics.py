@@ -95,6 +95,11 @@ def EncodeArtTit(str):
     return rtn
 
 def fetch_lyrics(artist, title):
+    if artist is None:
+        artist = ''
+    if title is None:
+        title = ''
+
     # fixed headers
     headers =  {'User-agent' : 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)'}
 

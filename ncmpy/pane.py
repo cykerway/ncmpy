@@ -6,6 +6,8 @@ pane module;
 
 from os.path import basename
 from os.path import dirname
+from os.path import isdir
+from os.path import join
 import curses
 import mpd
 import os
@@ -13,13 +15,13 @@ import threading
 import time
 
 from ncmpy import lrc
-from ncmpy import ttplyrics
 from ncmpy.config import conf
 from ncmpy.keysym import code2name as c2n
 from ncmpy.keysym import keysym as ks
 from ncmpy.keysym import keysymgrp as ksg
 from ncmpy.util import format_time
 from ncmpy.util import get_tag
+from ncmpy.util import lrc_basename
 
 class Pane():
 
@@ -51,6 +53,8 @@ class Pane():
 
         self.mpc = self.ctrl.mpc
         self.ipc = self.ctrl.ipc
+        self.itc = self.ctrl.itc
+        self.itc_cond = self.ctrl.itc_cond
         self.height, self.width = self.win.getmaxyx()
 
     def fetch(self):
@@ -980,153 +984,114 @@ class DatabasePane(CursedPane):
                 self.win.attroff(curses.A_REVERSE)
         self.win.noutrefresh()
 
-class LyricsPane(ScrollPane, threading.Thread):
+class LyricsPane(ScrollPane):
 
     '''
     display lyrics;
-
-    todo:
     '''
 
     def __init__(self, name, win, ctrl):
-        ##  todo: there is a subtle bug: `theading.Thread` has a `name` field,
-        ##  while `Pane` also has a `name` field; if we call `Pane.__init__`
-        ##  first, then an exception is raised; this bug will be solved when we
-        ##  later move `threading.Thread` out of a pane;
-        threading.Thread.__init__(self, name='Lyrics')
-        ScrollPane.__init__(self, name, win, ctrl)
+        super().__init__(name, win, ctrl)
 
-        self.daemon = True
+        ##  song whose lyrics is fetched;
+        self.res = {}
 
-        # directory to save lyrics.
-        # Make sure have write permission.
-        self._lyrics_dir = conf.lyrics_dir
-
-        if not os.path.isdir(self._lyrics_dir):
-            os.makedirs(self._lyrics_dir)
-
-        # new song, maintained by pane
-        self._nsong = None
-        # old song, maintained by worker
-        self._osong = None
-        # title of lyrics to fetch
-        self._title = None
-        # artist of lyrics to fetch
-        self._artist = None
-        # current lyrics, oneline str
-        self._lyrics = '[00:00.00]Cannot fetch lyrics (No artist/title).'
-        # current lyrics timestamp as lists, used by ctrl thread only
-        self._ltimes = []
-        # current lyrics text as lists, used by ctrl thread only
-        self._ltexts = []
-        # incicate lyrics state: 'local', 'net', 'saved' or False
-        self._lyrics_state = False
-        # condition variable for lyrics fetching and display
-        self._cv = threading.Condition()
-
-        # auto-center
+        ##  auto-center;
         self.auto_center = True
 
-    def _transtag(self, tag):
-        '''Transform tag into format used by lrc engine.'''
-
-        if tag is None:
-            return None
-        else:
-            return tag.replace(' ', '').lower()
-
-    def fetch(self):
-        super().fetch()
-
-        song = self.currentsong
-
-        # Do nothing if cannot acquire lock.
-        if self._cv.acquire(blocking=False):
-            self._nsong = song.get('file')
-            # If currengsong changes, wake up worker.
-            if self._nsong != self._osong:
-                self._artist = song.get('artist')
-                self._title = song.get('title')
-                self._cv.notify()
-            self._cv.release()
-
     def _save_lyrics(self):
-        if self._artist and self._title and self._cv.acquire(blocking=False):
-            with open(os.path.join(self._lyrics_dir, self._artist.replace('/', '_') + \
-                    '-' + self._title.replace('/', '_') + '.lrc'), 'wt') as f:
-                f.write(self._lyrics)
-            self.ipc['msg'] = 'Lyrics {}-{}.lrc saved.'.format(self._artist, self._title)
-            self._lyrics_state = 'saved'
-            self._cv.release()
+        song = self.res.get('song')
+        if song:
+            title = song.get('title')
+            artist = song.get('artist')
+            basename = lrc_basename(title, artist)
+            if not isdir(conf.lyrics_dir):
+                os.makedirs(conf.lyrics_dir)
+            with open(join(conf.lyrics_dir, basename), 'wt') as fp:
+                fp.write(self.res.get('lyrics'))
+            self.ipc['msg'] = f'Lyrics {basename} saved.'
         else:
             self.ipc['msg'] = 'Lyrics saving failed.'
 
-    def round0(self):
-        super().round0()
-
-        if self.ch == ord('j'):
-            self.line_down()
-        elif self.ch == ord('k'):
-            self.line_up()
-        elif self.ch == ord('f'):
-            self.page_down()
-        elif self.ch == ord('b'):
-            self.page_up()
-        elif self.ch == ord('l'):
-            self.locate(self.cur)
-        elif self.ch == ord('\''):
-            self.auto_center = not self.auto_center
-        elif self.ch == ord('K'):
-            self._save_lyrics()
-
     def _parse_lrc(self, lyrics):
-        '''Parse lrc lyrics into ltimes and ltexts.'''
+
+        '''
+        parse lrc lyrics into times and texts;
+        '''
 
         tags, tms = lrc.parse(lyrics)
         sorted_keys = sorted(tms.keys())
-        ltimes = [int(i) for i in sorted_keys]
-        ltexts = [tms.get(i) for i in sorted_keys]
-        return ltimes, ltexts
+        times = [ int(i) for i in sorted_keys ]
+        texts = [ tms.get(i) for i in sorted_keys ]
+        return times, texts
 
-    def current_line(self):
-        '''Calculate line number of current progress.'''
+    def _current_line(self):
+
+        '''
+        find current line in lyrics;
+        '''
 
         cur = 0
         tm = self.status.get('time')
         if tm:
             elapsed = int(tm.split(':')[0])
-            while cur < self.num and self._ltimes[cur] <= elapsed:
+            while cur < self.num and self.times[cur] <= elapsed:
                 cur += 1
             cur -= 1
         return cur
 
+    def fetch(self):
+        super().fetch()
+
+        ##  if current song lyrics is not fetched:
+        if self.currentsong != self.res.get('song'):
+            ##  acquire lock;
+            if self.itc_cond.acquire(blocking=False):
+                res = self.itc.get('res-lyrics')
+                if res and res['song'] == self.currentsong:
+                    ##  lyrics is fetched; parse it;
+                    self.res = res
+                    self.times, self.texts = self._parse_lrc(res['lyrics'])
+                    self.num, self.beg = len(self.times), 0
+                else:
+                    ##  start a job to fetch lyrics;
+                    if not self.itc.get('job-lyrics'):
+                        self.itc['job-lyrics'] = {
+                            'song': self.currentsong,
+                        }
+                        ##  todo: no need to notify all; only need to notify the
+                        ##  lyrics thread; maybe we should re-design itc lock?
+                        self.itc_cond.notify_all()
+                    self.times, self.texts = self._parse_lrc('[00:00.00]Fetching...')
+                    self.num, self.beg = len(self.times), 0
+                ##  release lock;
+                self.itc_cond.release()
+
+    def round0(self):
+        super().round0()
+
+        if self.ch == ks.linedn:
+            self.line_down()
+        elif self.ch == ks.lineup:
+            self.line_up()
+        elif self.ch == ks.pagedn:
+            self.page_down()
+        elif self.ch == ks.pageup:
+            self.page_up()
+        elif self.ch == ks.locate:
+            self.locate(self.cur)
+        elif self.ch == ks.lock:
+            self.auto_center = not self.auto_center
+        elif self.ch == ks.savelyrics:
+            self._save_lyrics()
+
     def round1(self):
         super().round1()
 
-        # output 'Updating...' if cannot acquire lock
-        if self._cv.acquire(blocking=0):
-            # if worker reports lyrics fetched
-            if self._lyrics_state in ['local', 'net']:
-                # parse lrc (and copy lrc from shared mem to non-shared mem)
-                self._ltimes, self._ltexts = self._parse_lrc(self._lyrics)
-                self.num, self.beg = len(self._ltimes), 0
+        ##  set current line;
+        self.cur = self._current_line()
 
-                # auto-save lyrics
-                if self._lyrics_state == 'net' and self.num > 10:
-                    self._save_lyrics()
-                else:
-                    self._lyrics_state = 'saved'
-
-            self._cv.release()
-        else:
-            self._ltimes, self._ltexts = [0], ['Updating...']
-            # set self.num and self.beg
-            self.num, self.beg = 1, 0
-
-        # set self.cur, the highlighted line
-        self.cur = self.current_line()
-
-        # auto center
+        ##  auto center;
         if self.auto_center:
             self.locate(self.cur)
 
@@ -1135,38 +1100,10 @@ class LyricsPane(ScrollPane, threading.Thread):
         attr = curses.A_BOLD | curses.color_pair(3)
         for i in range(self.beg, min(self.num, self.beg + self.height)):
             if i == self.cur:
-                self.win.insstr(i - self.beg, 0, self._ltexts[i], attr)
+                self.win.insstr(i - self.beg, 0, self.texts[i], attr)
             else:
-                self.win.insstr(i - self.beg, 0, self._ltexts[i])
+                self.win.insstr(i - self.beg, 0, self.texts[i])
         self.win.noutrefresh()
-
-    def run(self):
-        self._cv.acquire()
-        while True:
-            # wait if currentsong doesn't change
-            while self._nsong == self._osong:
-                self._cv.wait()
-
-            self._lyrics = '[00:00.00]Cannot fetch lyrics (No artist/title).'
-            self._lyrics_state = 'local'
-
-            # fetch lyrics if required information is provided
-            if self._artist and self._title:
-                # try to fetch from local lrc
-                lyrics_file = os.path.join(self._lyrics_dir, self._artist.replace('/', '_') + \
-                        '-' + self._title.replace('/', '_') + '.lrc')
-                if os.path.isfile(lyrics_file):
-                    with open(lyrics_file, 'rt') as f:
-                        self._lyrics = f.read()
-                    # inform round1: lyrics has been fetched
-                    self._lyrics_state = 'local'
-                # if local lrc doesn't exist, fetch from Internet
-                else:
-                    self._lyrics = ttplyrics.fetch_lyrics(self._transtag(self._artist), \
-                            self._transtag(self._title))
-                    # inform round1: lyrics has been fetched
-                    self._lyrics_state = 'net'
-            self._osong = self._nsong
 
 class ArtistAlbumPane(CursedPane):
 
