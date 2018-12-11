@@ -270,10 +270,10 @@ class CursedPane(BlockPane):
         if not (self.ctrl.search_kw and self.ctrl.search_dr): return
 
         dr = {
-            ord('/') : + 1,
-            ord('?') : - 1,
-            ord('n') : + self.ctrl.search_dr,
-            ord('N') : - self.ctrl.search_dr,
+            ks.searchdn     : + 1,
+            ks.searchup     : - 1,
+            ks.searchnext   : + self.ctrl.search_dr,
+            ks.searchprev   : - self.ctrl.search_dr,
         }[ch]
 
         found = False
@@ -586,13 +586,13 @@ class HelpPane(ScrollPane):
     def round0(self):
         super().round0()
 
-        if self.ch == ord('j'):
+        if self.ch == ks.linedn:
             self.line_down()
-        elif self.ch == ord('k'):
+        elif self.ch == ks.lineup:
             self.line_up()
-        elif self.ch == ord('f'):
+        elif self.ch == ks.pagedn:
             self.page_down()
-        elif self.ch == ord('b'):
+        elif self.ch == ks.pageup:
             self.page_up()
 
     def update(self):
