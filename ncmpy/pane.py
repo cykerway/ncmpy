@@ -14,7 +14,6 @@ import os
 import threading
 import time
 
-from ncmpy import lrc
 from ncmpy.config import conf
 from ncmpy.keysym import code2name as c2n
 from ncmpy.keysym import keysym as ks
@@ -22,6 +21,7 @@ from ncmpy.keysym import keysymgrp as ksg
 from ncmpy.util import format_time
 from ncmpy.util import get_tag
 from ncmpy.util import lrc_basename
+from ncmpy.util import lrc_parse
 
 class Pane():
 
@@ -1019,7 +1019,7 @@ class LyricsPane(ScrollPane):
         parse lrc lyrics into times and texts;
         '''
 
-        tags, tms = lrc.parse(lyrics)
+        tags, tms = lrc_parse(lyrics)
         sorted_keys = sorted(tms.keys())
         times = [ int(i) for i in sorted_keys ]
         texts = [ tms.get(i) for i in sorted_keys ]

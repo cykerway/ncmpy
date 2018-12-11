@@ -4,6 +4,8 @@
 util module;
 '''
 
+import re
+
 def format_time(tm):
 
     '''
@@ -32,4 +34,40 @@ def lrc_basename(title, artist):
     _artist = (artist or '').replace('/', '_')
     _basename = f'{_artist} - {_title}.lrc'
     return _basename
+
+def lrc_parse(lrc):
+
+    '''
+    parse lrc string;
+    '''
+
+    _tag = re.compile(r'\[([a-z][a-z]):(.*)\]')
+    _tm = re.compile(r'\[(\d\d):(\d\d).(\d\d)\](.*)')
+
+    tags = {}
+    tms = {}
+
+    try:
+        lines = lrc.splitlines()
+        for line in lines:
+            line = line.strip()
+            m = _tag.match(line)
+            if m:
+                tagkey, tagval = m.groups()
+                tags[tagkey] = tagval.strip()
+            else:
+                # handle multiple tms, like [mm:ss.xx]<mm:ss.xx>...
+                matched_tms = []
+                m = _tm.match(line)
+                while m:
+                    mm, ss, xx, line = m.groups()
+                    tm = float(mm) * 60 + float(ss) + float(xx) * 0.01
+                    matched_tms.append(tm)
+                    m = _tm.match(line)
+                for tm in matched_tms:
+                    tms[tm] = line
+    except:
+        raise Exception('cannot parse lrc')
+    finally:
+        return tags, tms
 
