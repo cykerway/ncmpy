@@ -993,7 +993,7 @@ class LyricsPane(ScrollPane):
     def __init__(self, name, win, ctrl):
         super().__init__(name, win, ctrl)
 
-        ##  song whose lyrics is fetched;
+        ##  fetch lyrics result;
         self.res = {}
 
         ##  auto-center;
