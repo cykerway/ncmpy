@@ -97,8 +97,12 @@ def EncodeArtTit(str):
 def fetch_lyrics(artist, title):
     if artist is None:
         artist = ''
+    else:
+        artist = artist.replace(' ', '').lower()
     if title is None:
         title = ''
+    else:
+        title = title.replace(' ', '').lower()
 
     # fixed headers
     headers =  {'User-agent' : 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)'}

@@ -28,9 +28,8 @@ def get_tag(tagname, item):
         return None
 
 def lrc_basename(title, artist):
-
-    _title = title.replace('/', '_')
-    _artist = artist.replace('/', '_')
+    _title = (title or '').replace('/', '_')
+    _artist = (artist or '').replace('/', '_')
     _basename = f'{_artist} - {_title}.lrc'
     return _basename
 

@@ -4,11 +4,13 @@
 thread module;
 '''
 
-from threading import Thread
 from os.path import isdir
+from os.path import join
+from threading import Thread
 
 from ncmpy import ttplyrics
 from ncmpy.config import conf
+from ncmpy.util import lrc_basename
 
 class LyricsThread(Thread):
 
@@ -29,24 +31,30 @@ class LyricsThread(Thread):
     def _fetch_local(self, artist, title):
 
         '''
-        fetch lyrics from local;
+        fetch local lyrics;
         '''
 
-        ##  todo
-        return None
+        basename = lrc_basename(title, artist)
+        lyrics_file = join(conf.lyrics_dir, basename)
+        try:
+            with open(lyrics_file, 'rt') as fp:
+                lyrics = fp.read()
+        except FileNotFoundError:
+            lyrics = None
+        return lyrics
 
     def _fetch_remote(self, artist, title):
 
         '''
-        fetch lyrics from remote;
+        fetch remote lyrics;
         '''
 
         return ttplyrics.fetch_lyrics(artist, title)
 
-    def _fetch_none(self, artist, title):
+    def _fetch_default(self, artist, title):
 
         '''
-        fetch lyrics from nowhere;
+        fetch default lyrics;
         '''
 
         return '[00:00.00]No lyrics.'
@@ -58,50 +66,23 @@ class LyricsThread(Thread):
                 self.itc_cond.wait()
 
             job = self.itc.get('job-lyrics')
+
+            self.itc_cond.release()
+
             song = job.get('song')
             artist = song.get('artist')
             title = song.get('title')
 
-            ##  todo: fetch in background;
             lyrics = None
             lyrics = lyrics or self._fetch_local(artist, title)
             lyrics = lyrics or self._fetch_remote(artist, title)
-            lyrics = lyrics or self._fetch_none(artist, title)
+            lyrics = lyrics or self._fetch_default(artist, title)
+
+            self.itc_cond.acquire()
 
             self.itc['res-lyrics'] = {
                 'song': song,
                 'lyrics': lyrics,
             }
             self.itc['job-lyrics'] = None
-
-#        while True:
-#
-#            self._lyrics = '[00:00.00]Cannot fetch lyrics (No artist/title).'
-#            self._lyrics_state = 'local'
-#
-#            # fetch lyrics if required information is provided
-#            if self._artist and self._title:
-#                # try to fetch from local lrc
-#                lyrics_file = os.path.join(self._lyrics_dir, self._artist.replace('/', '_') + \
-#                        '-' + self._title.replace('/', '_') + '.lrc')
-#                if os.path.isfile(lyrics_file):
-#                    with open(lyrics_file, 'rt') as f:
-#                        self._lyrics = f.read()
-#                    # inform round1: lyrics has been fetched
-#                    self._lyrics_state = 'local'
-#                # if local lrc doesn't exist, fetch from Internet
-#                else:
-#                    self._lyrics = ttplyrics.fetch_lyrics(self._transtag(self._artist), \
-#                            self._transtag(self._title))
-#                    # inform round1: lyrics has been fetched
-#                    self._lyrics_state = 'net'
-#            self._osong = self._nsong
-
-#    def _transtag(self, tag):
-#        '''Transform tag into format used by lrc engine.'''
-#
-#        if tag is None:
-#            return None
-#        else:
-#            return tag.replace(' ', '').lower()
 
