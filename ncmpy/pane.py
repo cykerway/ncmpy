@@ -321,7 +321,7 @@ class MenuPane(BarPane):
             '[rep]' if int(self.status['repeat']) else '',
             '[sin]' if int(self.status['single']) else '',
         )
-        vol = 'Volume: {:3d}%'.format(int(self.status['volume']))
+        vol = 'Volume: {:3d}%'.format(int(self.status.get('volume', -1)))
 
         return title + (mode + ' ' * 4 + vol).rjust(self.width - len(title))
 

@@ -258,14 +258,14 @@ class Ncmpy():
 
         ##  volume control;
         if self.ch == ks.voldn:
-            vol = max(0, int(self.status['volume']) - 1)
+            vol = max(0, int(self.status.get('volume', -1)) - 1)
             try:
                 self.mpc.setvol(vol)
                 self.status['volume'] = str(vol)
             except mpd.CommandError as e:
                 self.ipc['msg'] = str(e)
         elif self.ch == ks.volup:
-            vol = min(100, int(self.status['volume']) + 1)
+            vol = min(100, int(self.status.get('volume', -1)) + 1)
             try:
                 self.mpc.setvol(vol)
                 self.status['volume'] = str(vol)
