@@ -173,6 +173,7 @@ setup(
     ##
     install_requires=[
         'python-mpd2',
+        'PyYAML',
     ],
 
     ##  extra package dependencies;
