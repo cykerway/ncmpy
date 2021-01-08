@@ -134,6 +134,8 @@ setup(
         ##  supported python versions;
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
 
     ##  project keywords;
@@ -172,7 +174,7 @@ setup(
     ##  will be installed by pip when this project is installed;
     ##
     install_requires=[
-        'python-mpd2',
+        'python-mpd2==1.0.0',
         'PyYAML',
     ],
 
